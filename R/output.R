@@ -287,14 +287,6 @@ as.character.treeprof_fun_table <- function(x, mode="TEXT", ...) {
   if(!identical(mode, "TEXT")) stop("Argument `mode` must be \"TEXT\"")
   c(
     paste0("Time Units: ", attr(x, "time.unit"), "\n"),
-<<<<<<< HEAD
-<<<<<<< HEAD
-    capture.output(print(as.data.table(x)))
-=======
     capture.output(print(as.dt(x)))
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-    capture.output(print(as.data.table(x)))
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
   )
 }

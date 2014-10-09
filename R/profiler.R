@@ -22,28 +22,13 @@
 #'   stable results by running the same function thousands of times than by
 #'   using `gctorture` to slow it down by 10-1000x and just running it a couple
 #'   of times.
-<<<<<<< HEAD
-<<<<<<< HEAD
 #' @param verbose logical(1L) whether to output status to screen
-=======
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-#' @param verbose logical(1L) whether to output status to screen
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
 #' @return a treeprof object, which is really just a `data.table` with some
 #'   attributes attached
 
 treeprof <- function(
   expr=NULL, target.time=5, times=NULL, interval=0.001, 
-<<<<<<< HEAD
-<<<<<<< HEAD
   file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE
-=======
-  file=NULL, eval.frame=parent.frame(), gc.torture=FALSE
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-  file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
 ) {
   expr.capt <- substitute(expr)
   if(!is.null(interval) && (!is.numeric(interval) || !length(interval) == 1L)) {
@@ -68,8 +53,6 @@ treeprof <- function(
 
   # Now process resulting Rprof output
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   clean_message("Profiling", verbose)
   lines <- run_rprof(                                     # run Rprof and return character vector
     expr.quoted=expr.capt, interval=interval, target.time=target.time, 
@@ -78,37 +61,13 @@ treeprof <- function(
   clean_message("Parsing Rprof", verbose)
   prof.mx <- parse_lines(lines$file)                      # cleanup / transform to matrix format 
   res <- melt_prof(prof.mx, lines$meta$levels)            # convert to long format / data.table
-=======
-  message("Profiling")
-=======
-  clean_message("Profiling", verbose)
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
-  lines <- run_rprof(                                     # run Rprof and return character vector
-    expr.quoted=expr.capt, interval=interval, target.time=target.time, 
-    times=times, file=temp.file, frame=eval.frame, gc.torture=gc.torture,
-    verbose=verbose)  
-  clean_message("Parsing Rprof", verbose)
-  prof.mx <- parse_lines(lines$file)                      # cleanup / transform to matrix format 
-  res <- melt_prof(prof.mx, lines$meta$levels)            # convert to long format / data.table
-<<<<<<< HEAD
-  message("Almost Done")
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
   
   # Add the meta data
 
   setattr(res, "meta.data", 
     list(iterations=lines$meta$run.counter, time=lines$meta$time.total)
   )
-<<<<<<< HEAD
-<<<<<<< HEAD
   clean_message("Done", verbose)
-=======
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-  clean_message("Done", verbose)
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
   res
 }
 #' Actually Run the Code and Capture \code{`Rprof`} Output
@@ -119,17 +78,8 @@ treeprof <- function(
 #' @return list containing the file name of the Rprof data plus some meta data
 
 run_rprof <- function(
-<<<<<<< HEAD
-<<<<<<< HEAD
   expr.quoted, interval, target.time, times, file, frame=parent.frame(), 
   gc.torture, verbose
-=======
-  expr.quoted, interval, target.time, times, file, frame=parent.frame(), gc.torture
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-  expr.quoted, interval, target.time, times, file, frame=parent.frame(), 
-  gc.torture, verbose
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
 ) {
   # Get Rprof results, may need to run multiple times, and unfortunately as a
   # result of `system.time` inprecision need to jump through hoops if the run
@@ -154,13 +104,6 @@ run_rprof <- function(
       stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
     run.counter <- times
   } else {             # attempt to run as many times as reqd to get target time
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    message("Go One")
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
     mult <- 1
     Rprof(NULL)
     test.run.timed <- numeric(1L)
@@ -178,24 +121,10 @@ run_rprof <- function(
     test.run.time <- test.run.timed[[1]]
     run.multiplier <- 50
     runs <- run.counter <- 1
-<<<<<<< HEAD
-<<<<<<< HEAD
     clean_message("Estimate evaluation time", verbose)
 
     while(test.run.time < 0.02) {  # If runs too fast, run 50 more times, and so on
       clean_message("Fast Loop, still estimating", verbose)
-=======
-    message("Time loop 1")
-
-    while(test.run.time < 0.02) {  # If runs too fast, run 50 more times, and so on
-      message("Time loop 1 iterate")
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-    clean_message("Estimate evaluation time", verbose)
-
-    while(test.run.time < 0.02) {  # If runs too fast, run 50 more times, and so on
-      clean_message("Fast Loop, still estimating", verbose)
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
       gctorture(gc.torture)
       Rprof(file, interval=interval, append=TRUE)
       attempt <- try(
@@ -208,28 +137,14 @@ run_rprof <- function(
       )
       Rprof(NULL)
       gctorture(FALSE)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
       print(test.run.timed)
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
       if(inherits(attempt, "try-error")) 
         stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
       test.run.time <- sum(test.run.timed)
       run.counter <- run.counter + runs
     }
     if((extra.reps <- floor(target.time / test.run.time)) > 2 ) {  # Didn't fill allotted time, so rep more
-<<<<<<< HEAD
-<<<<<<< HEAD
       clean_message(paste0("Looping to ", target.time, " seconds"), verbose)
-=======
-      message("Time loop 2")
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
-      clean_message(paste0("Looping to ", target.time, " seconds"), verbose)
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
       gctorture(gc.torture)
       Rprof(file, interval=interval, append=TRUE)
       attempt <- try(
@@ -242,13 +157,7 @@ run_rprof <- function(
       gctorture(FALSE)
       if(inherits(attempt, "try-error")) 
         stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
       print(test.run.timed)
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
       run.counter <- run.counter + extra.reps * runs
     }    
   }
@@ -263,13 +172,6 @@ run_rprof <- function(
 #'   additional NA column added at the end
 
 parse_lines <- function(file) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-  message("Parsing Lines")
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
   con <- file(file)
   lines <- readLines(con)
   close(con)

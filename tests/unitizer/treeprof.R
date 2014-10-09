@@ -27,13 +27,6 @@ unitizer_sect("Recreate treeprof from log", {
   all.equal(treeprof.ref, x)
   x           
 } )
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
 unitizer_sect("Node management", {
   treeprof.ref.1 <- readRDS(system.file("extdata/type_alike.treeprof.RDS", package="treeprof"))
   treeprof.ref.2 <- readRDS(system.file("extdata/doubletry.treeprof.RDS", package="treeprof"))
@@ -72,19 +65,9 @@ unitizer_sect("By Function Summary Table", {
   by_fun(treeprof:::normalize(treeprof.ref.1, "auto"))
   by_fun(treeprof:::normalize(treeprof.ref.2, "auto"))
 } )
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
 unitizer_sect("Verbosity", # Don't care so much about value since non-deterministic, want to check stderr()
   compare=unitizerItemTestsFuns(value=function(x, y) TRUE, message=all.equal),
   {
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1)
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1, verbose=FALSE)
 } )
-<<<<<<< HEAD
-=======
-
->>>>>>> 75d32eb92dbce607391b8bcf59be3a129015cdd0
-=======
->>>>>>> 2a504db3379c01ea7079dc7c05a7fc2800124694
