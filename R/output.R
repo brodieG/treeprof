@@ -1,6 +1,6 @@
 #' @export
 
-summary.treeprof <- function(object, mode="TEXT", ...) {  
+summary.treeprof <- function(object, mode="TEXT", ...) {
   invisible(summary(normalize(object, disp.unit="auto"), mode=mode))
 }
 #' @export
@@ -26,7 +26,7 @@ print.treeprof_fun_table <- function(x, ...) {
 }
 
 #' Transform treeprof Output Into Text Representation
-#' 
+#'
 #' @export
 #' @aliases as.character.treeprof_summary, as.character.treeprof_fun_table
 #' @param x treeprof object
@@ -60,14 +60,14 @@ as.character.treeprof <- function(
   x.new <- collapse_passthru_funs(x.new)
   x.new <- sort(x.new, decreasing=TRUE)
   if(!inherits(x.new, "treeprof_norm")) {
-    x.new <- normalize(x.new, disp.unit)  
+    x.new <- normalize(x.new, disp.unit)
   }
   if(disp.unit == "auto") disp.unit <- attr(x.new, "time.unit")
 
   base.level <- x.new[id == id.start, level]
   terminal <- x.new[level >= c(tail(level, -1L), 0L), id]  # terminal node ids, used later
-  target.branch <- x.new[id.start == id |                  # the branch we're focused on   
-    id > id.start & level >= base.level + 1L & 
+  target.branch <- x.new[id.start == id |                  # the branch we're focused on
+    id > id.start & level >= base.level + 1L &
     cumsum(id > id.start & level <= base.level) == 0, id
   ]
   x.new <- trim_branch(x.new, id.start, depth=depth)       # levels too far down to show
@@ -88,20 +88,20 @@ as.character.treeprof <- function(
     disp.unit
   )
   # Generate basic print format with offsets for each level, etc.
-  
+
   basic.str <- x.new[,
     (
       function(dt.row) {
         name.chars <- nchar(fun.name)
         paste0(
           vapply(level, function(y) paste0(rep(" ", y * tab.size), collapse=""), character(1L)),
-          fun.name, 
+          fun.name,
           "~",    #marks end of fun.name, will later be removed
           vapply(
-            seq_along(name.chars), 
+            seq_along(name.chars),
             function(i) {
               paste0(
-                rep("-", max.chars - name.chars[[i]] - level[[i]] * tab.size), 
+                rep("-", max.chars - name.chars[[i]] - level[[i]] * tab.size),
                 collapse=""
             ) },
             character(1L)
@@ -115,28 +115,28 @@ as.character.treeprof <- function(
   str.mx <- do.call(rbind, strsplit(basic.str, split=""))
   str.mx.cols <- ncol(str.mx)
   str.mx.shift <- cbind(" ", str.mx[, -str.mx.cols])
-  
+
   # Now find the previous character so we can look for beginning of string
   # (i.e. " x")
-  
+
   str.mx.2 <- matrix(paste(str.mx.shift, str.mx, sep=""), ncol=str.mx.cols)
-  
+
   cells.to.fill <- apply(
-    str.mx.2, 
+    str.mx.2,
     2L,
     function(vec) {
       no.space <- grep(" [^ ]", vec)
       no.space.end <- grep("[^ ]{2}", vec)
       if(length(no.space) > 1L) {   # All the lines that both start at same level
-        # Each row has the start row end row of two calls at same level (i.e 
+        # Each row has the start row end row of two calls at same level (i.e
         # the gap to bridge with `|` assuming no intervening other text)
-        no.space.pairs <- cbind(    
+        no.space.pairs <- cbind(
           no.space[-length(no.space)],
           no.space[-1L]
         )
         # But only want those that don't have other intervening lines, which are
         # the ones denoted by no.space.end
-        
+
         no.space.valid <- no.space.pairs[
           apply(
             no.space.pairs,
@@ -155,21 +155,21 @@ as.character.treeprof <- function(
         ]
         # Now get every row between the line pairs we care about since these
         # are the ones that are getting the vertical connector
-        
+
         if(nrow(no.space.valid) < 1) {
           integer(0)
         } else {
           c(
             unlist(
               apply(no.space.valid, 1, function(vec) setdiff(min(vec):max(vec),vec))
-        ) ) } 
+        ) ) }
       } else {
         integer(0)
   } } )
   # Now create an indexing matrix from the above info; basically, we just
   # need to add the column reference to the above data and make sure we have
   # an n x 2 matrix
-  
+
   if(length(cells.to.fill)) {
     cells.to.fill.index.mx <- do.call(
       rbind,
@@ -180,11 +180,11 @@ as.character.treeprof <- function(
           } else {
             integer(0)
         } },
-        cells.to.fill, 
+        cells.to.fill,
         1:length(cells.to.fill),
         SIMPLIFY=FALSE
     ) )
-    str.mx[cells.to.fill.index.mx] <- "|"  
+    str.mx[cells.to.fill.index.mx] <- "|"
   }
   # add back gap between fun.name and the trailing dashes
 
@@ -194,12 +194,12 @@ as.character.treeprof <- function(
   )
   str.vec <- paste(
     str.vec,
-    x.new[ , 
+    x.new[ ,
       paste(
-        " : ", 
-        format(n.norm, justify="right"), 
+        " : ",
+        format(n.norm, justify="right"),
         " - ",
-        format(n.self.norm, justify="right"), 
+        format(n.self.norm, justify="right"),
         sep=""
     ) ],
     sep=""
@@ -213,33 +213,33 @@ as.character.treeprof <- function(
 
     # Also, need to handle the span stuff more elegantly.  Was just trying to
     # prototype stuff so didn't bother with css elegance.
-    
+
     lpad <- substr(str.vec, 1, x.new[, level * tab.size])
     rpad <- substr(str.vec, x.new[, level * tab.size] + nchar(x.new[, fun.name]) + 1L, nchar(str.vec))
     meat <- paste0(
-      "<span onclick=\"Shiny.onInputChange('navigate', ", x.new$id, ")\">", 
+      "<span onclick=\"Shiny.onInputChange('navigate', ", x.new$id, ")\">",
         gsub(">", "&gt;", gsub("<", "&lt;", gsub("&", "&amp;", x.new$fun.name))),
       "</span>"
     )
     meat[x.new$id == id.start] <- paste0(
-      "<span style='color: blue; font-weight: bold;'>", 
-        meat[x.new$id == id.start], 
+      "<span style='color: blue; font-weight: bold;'>",
+        meat[x.new$id == id.start],
       "</span>"
     )
     meat[x.new$id %in% terminal] <- paste0(
-      "<span style='color: black;'>", 
-        meat[x.new$id %in% terminal], 
+      "<span style='color: black;'>",
+        meat[x.new$id %in% terminal],
       "</span>"
     )
     meat[x.new$id != id.start] <- paste0(
-      "<span style='color: #3333CC;'>", 
-        meat[x.new$id != id.start], 
+      "<span style='color: #3333CC;'>",
+        meat[x.new$id != id.start],
       "</span>"
     )
     sandwich <- paste0(lpad, meat, rpad)
     target.data <- sandwich[x.new$id %in% target.branch]  # calculated early on
     sandwich[x.new$id %in% target.branch] <- paste0(
-      "<span style='opacity: 0.5;'>", 
+      "<span style='opacity: 0.5;'>",
         substr(target.data, 1L, base.level * tab.size),
       "</span>",
       "<span>",

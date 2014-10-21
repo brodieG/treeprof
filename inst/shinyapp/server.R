@@ -10,7 +10,7 @@ mpgData$am <- factor(mpgData$am, labels = c("Automatic", "Manual"))
 # Define server logic required to plot various variables against mpg
 shinyServer(function(input, output) {
 
-  # Compute the forumla text in a reactive expression since it is 
+  # Compute the forumla text in a reactive expression since it is
   # shared by the output$caption and output$mpgPlot expressions
   formulaText <- reactive({
     paste("mpg ~", input$variable)
@@ -21,10 +21,10 @@ shinyServer(function(input, output) {
     formulaText()
   })
 
-  # Generate a plot of the requested variable against mpg and only 
+  # Generate a plot of the requested variable against mpg and only
   # include outliers if requested
   output$mpgPlot <- renderPlot({
-    boxplot(as.formula(formulaText()), 
+    boxplot(as.formula(formulaText()),
             data = mpgData,
             outline = input$outliers)
   })

@@ -10,7 +10,7 @@ Yet another R benchmarking package.  Here is why you might be interested in it:
 * Unlike `Rprof` this tells you which calls are childrens of others; often in
   `Rprof` you can infer this based on the total execution times reported, but
   at times it is ambiguous
-* Unlike `Rprof` or `lineprof` this will automatically repeat code that 
+* Unlike `Rprof` or `lineprof` this will automatically repeat code that
   evaluates too quickly to register meaningfully through stack dumps, by default
   targeting a total evaluation time of 5 seconds.
 * Unlike `lineprof`, this shows the entire call stack at once so you can see at

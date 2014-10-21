@@ -1,44 +1,44 @@
 #' Per Function Summary
-#' 
+#'
 #' Computes execution times for each function, accounting for any repeats, but
 #' ignoring contrbutions from nested repeats when summing up total times.
-#' 
+#'
 #' @param x treeprof object
 #' @return treeprof_fun_table object, which inherits from \code{`data.table`}
 #' @export
 
 by_fun <- function(x) {
-  if(!inherits(x, "treeprof_norm")) 
+  if(!inherits(x, "treeprof_norm"))
     stop("Argument `x` must be a `treeprof_norm` object")
 
   x.cp <- collapse_passthru_funs(copy(x))
   setkey(x.cp, id)
-  
+
   # For every element, find all the child nodes
 
-  x.all <- x.cp[, 
-    list(id.child=unlist(get_descendant_nodes(x.cp, id)), fun.name.orig=fun.name), 
+  x.all <- x.cp[,
+    list(id.child=unlist(get_descendant_nodes(x.cp, id)), fun.name.orig=fun.name),
     by=list(id.orig=id)
   ]
   setkey(x.all, id.child)
-  
+
   # For each parent-allchildren chain, check to see if any of the children are
-  # the same function call (do we need to address Recall? No, we don't since it 
+  # the same function call (do we need to address Recall? No, we don't since it
   # doesn't have the same name)
 
   x.cp.all.dup <- x.cp[x.all][
-    order(id), by=id.orig, 
+    order(id), by=id.orig,
     list(
-      id, 
-      duplicated=cumsum(fun.name == fun.name.orig) > 1 & 
+      id,
+      duplicated=cumsum(fun.name == fun.name.orig) > 1 &
         fun.name == fun.name.orig
     )
   ][, list(duplicated=any(duplicated)), by=id]
   setkey(x.cp.all.dup, id)
-  
-  # Add up the times 
 
-  x.cp.time <- x.cp.all.dup[x.cp][, by=fun.name, 
+  # Add up the times
+
+  x.cp.time <- x.cp.all.dup[x.cp][, by=fun.name,
     list(
       total=as.numeric(sum(ifelse(!duplicated, as.numeric(n.norm), 0))),
       self=sum(as.numeric(n.self.norm)),
@@ -50,7 +50,7 @@ by_fun <- function(x) {
   x.cp.time
 }
 #' Compute High Level Summary of \code{`treeprof`}
-#' 
+#'
 #' @keywords internal
 #' @param x \code{`treeprof_norm`} object
 #' @return \code{`treeprof_summary`} object

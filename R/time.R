@@ -1,9 +1,9 @@
 #' Display Time In Reasonable Units
-#' 
+#'
 #' Formats such that \code{`max(min(x), .005 * max(x))`} is at worst one decimal
 #' place.  This should work for multi value vectors as well as single value
 #' ones.
-#' 
+#'
 #' @keywords internal
 #' @aliases time_scale
 #' @param x numeric to format in seconds
@@ -12,7 +12,7 @@
 #' @param inc.units logical(1L) whether to paste the time units to each number
 #' @param trim logical(1L) set to FALSE to keep leading whitespace to align all
 #'   numbers
-#' @return character formatted numbers for \code{`time_format`}, a 
+#' @return character formatted numbers for \code{`time_format`}, a
 #'   \code{`time_scaled`} S3 object for \code{`time_scale`} containing scaled
 #'   times and units
 
@@ -21,19 +21,19 @@ time_format <- function(x, signif=4L, inc.units=TRUE, trim=TRUE) {
   if(!is.numeric(signif) || length(signif) != 1L || signif != round(signif)) {
     stop("Argument `signif` must be a one length integer")
   }
-  if(!is.logical(trim) || length(trim) != 1L) 
+  if(!is.logical(trim) || length(trim) != 1L)
     stop("Argument `trim` must be a one length logical")
   decimals <- max(0, signif - ceiling(log10(max(x))))
   paste0(
     format(
-      round(x, decimals), nsmall = decimals, digits=0, 
+      round(x, decimals), nsmall = decimals, digits=0,
       trim=trim, scientific=FALSE
-    ), 
+    ),
     if(inc.units) paste0(" ", attr(x, "time.unit"))
 ) }
 time_scale <- function(x, scale="auto", decimals.max=2L) {
   scales.valid <- c(
-    "kiloseconds", "seconds", "milliseconds", "microseconds", "nanoseconds", 
+    "kiloseconds", "seconds", "milliseconds", "microseconds", "nanoseconds",
     "picoseconds", "femtoseconds"
   )
   if(!is.numeric(x) || any(x < 0)) stop("Argument `x` must be numeric and positive")
@@ -43,7 +43,7 @@ time_scale <- function(x, scale="auto", decimals.max=2L) {
     stop("Argument `decimals.max` must be a one positive integer")
   }
   if(length(scale) != 1L || ! is.character(scale) || ! scale %in% c("auto", scales.valid)) {
-    stop("Argument `scale` must be 1 length character and in ", 
+    stop("Argument `scale` must be 1 length character and in ",
       'c("auto", "kiloseconds", "seconds", "milliseconds", "microseconds", "nanoseconds", "picoseconds", "femtoseconds")'
   ) }
   x <- x / 1000
@@ -53,7 +53,7 @@ time_scale <- function(x, scale="auto", decimals.max=2L) {
     pow.temp <- max(0, -floor(log10(target.x) / 3))
     if(
       target.x * 10 ^ (pow.temp * 3) > 1000 / 10 ^ decimals.max &
-      max(x) * 10 ^ (pow.temp * 3) >= 10000 
+      max(x) * 10 ^ (pow.temp * 3) >= 10000
     ) pow.temp - 1 else pow.temp
   } else {
     match(scale, scales.valid) - 1L
@@ -67,7 +67,7 @@ time_scale <- function(x, scale="auto", decimals.max=2L) {
   structure(time, class="time_scaled", time.unit=unit)
 }
 #' Retrive the Time Per Iteration of the treeprof
-#' 
+#'
 #' @keywords internal
 #' @param x a treeprof object
 

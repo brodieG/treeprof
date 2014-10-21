@@ -1,13 +1,13 @@
 #' Interactive UI For Exploring Benchmarks
-#' 
-#' Creates an interactive Shiny environment for users to browse through the 
+#'
+#' Creates an interactive Shiny environment for users to browse through the
 #' \code{`Rprof`} results in tree structure.
-#' 
+#'
 #' @note ideally this would be implemented as an S3 method to the \code{`shine`}
 #'   generic, but Shiny does not currenlty define such a method so we're stuck
 #'   with this.
-#' 
-#' @import shiny 
+#'
+#' @import shiny
 #' @param x a treeprof object
 #' @param id.start integer(1L) what node to start displaying from
 #' @param depth integer(1L) how deep down the tree to start off showing
@@ -16,11 +16,11 @@
 #' \dontrun{
 #' x <- treeprof(data.frame(a=1:10, b=letters[1:10]))
 #' shinify(x)
-#' } 
+#' }
 
 shinyfy <- function(x, id.start=1L, depth=10L) {
 
-  # = STATIC ===================================================================  
+  # = STATIC ===================================================================
 
   x.norm <- normalize(x, "auto")
   tips <- c(
@@ -37,10 +37,10 @@ shinyfy <- function(x, id.start=1L, depth=10L) {
     update_table <- function(y, depth, disp.thresh) {
       message("Updating", y, " to depth ", depth)
       if(missing(depth) || is.null(depth) || any(is.na(depth))) depth <- 0
-      if(missing(disp.thresh) || is.null(disp.thresh) || any(is.na(disp.thresh))) 
-        disp.thresh <- 0        
+      if(missing(disp.thresh) || is.null(disp.thresh) || any(is.na(disp.thresh)))
+        disp.thresh <- 0
       session$sendCustomMessage(
-        type = "myCallbackHandler", 
+        type = "myCallbackHandler",
         paste0(
           as.character(
             x, id.start=y, depth=depth, mode="HTML", disp.thresh=disp.thresh
@@ -61,13 +61,13 @@ shinyfy <- function(x, id.start=1L, depth=10L) {
     output$table <- renderDataTable(
       by.fun,
       options=list(
-        iDisplayLength=25,
-        aoColumns=list(
-          list(sClass="char", asSorting=list("asc", "desc")),
-          list(sClass="num", asSorting=list("desc", "asc")),
-          list(sClass="num", asSorting=list("desc", "asc")),
-          list(sClass="num", asSorting=list("desc", "asc")),
-          list(sClass="num", asSorting=list("desc", "asc"))
+        pageLength=25,
+        columns=list(
+          list(className="char", orderSequence=list("asc", "desc")),
+          list(className="num", orderSequence=list("desc", "asc")),
+          list(className="num", orderSequence=list("desc", "asc")),
+          list(className="num", orderSequence=list("desc", "asc")),
+          list(className="num", orderSequence=list("desc", "asc"))
     ) ) )
     observe(update_table(curr.id, input$depth, input$hideunder * 10))
   }
@@ -88,12 +88,12 @@ shinyfy <- function(x, id.start=1L, depth=10L) {
       "
     ) ),
     tags$h1("Tree Prof"),
-    tabsetPanel(type = "tabs", 
-      
+    tabsetPanel(type = "tabs",
+
       # - Tree ---------------------------------------------------------------
 
       tabPanel(
-        "Tree", 
+        "Tree",
         tags$div(id="tree_input_bar",
           numericInput("depth", "Depth: ", value=10, min=1, max=Inf, step=1),
           tags$span(
@@ -105,18 +105,18 @@ shinyfy <- function(x, id.start=1L, depth=10L) {
         HTML(paste0(as.character(x, id.start=1L, mode="HTML"), collapse="\n")),
         HTML(
           paste0(
-            "<br />", 
-            as.character(summarize(x.norm), mode="HTML"), 
+            "<br />",
+            as.character(summarize(x.norm), mode="HTML"),
             collapse="\n"
-      ) ) ), 
+      ) ) ),
       # - Table --------------------------------------------------------------
 
       tabPanel(
         "Table",
         div(id="treeprof_table", dataTableOutput("table")),
-        div(id="treeprof_table_tu", paste0("Time Units: ", attr(x.norm, "time.unit"))), 
-        div(id="treeprof_col_desc", 
-          "Column Descriptions:", 
+        div(id="treeprof_table_tu", paste0("Time Units: ", attr(x.norm, "time.unit"))),
+        div(id="treeprof_col_desc",
+          "Column Descriptions:",
           tags$ul(lapply(paste0(names(tips), ": ", tips), tags$li))
     ) ) ),
     tags$script('
@@ -129,7 +129,7 @@ shinyfy <- function(x, id.start=1L, depth=10L) {
   # - RUN --------------------------------------------------------------------
 
   runApp(
-    list(ui = ui, server = server), 
+    list(ui = ui, server = server),
     launch.browser = getOption("viewer", utils::browseURL)
   )
 }
