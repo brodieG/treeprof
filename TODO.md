@@ -8,7 +8,7 @@ Clicking on entries in table should highlight relevant parts of tree
 
 ## Exclude `base` functions?
 
-Don't dive into base functions?  Need to know which ones are passthrough 
+Don't dive into base functions?  Need to know which ones are passthrough
 functions that evaluate code, or functions that have an expression passed as an
 argument which is evaluated inside the function.  Need to think about this more.
 
@@ -25,7 +25,7 @@ discussed in `printAndSplit` docs.
 
 # Dependencies
 
-* Remove data.table dependencies?  Unlikely, too convenient for processing, 
+* Remove data.table dependencies?  Unlikely, too convenient for processing,
   unless we move to trees, but then would import igraph?
 
 # line.profiling

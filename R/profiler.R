@@ -1,11 +1,11 @@
 #' Profile with Rprof and Display As Tree
-#' 
+#'
 #' Uses RProf to profile an expression which will be repeatedly evaluated until
 #' target execution time is met.
-#' 
+#'
 #' @note timings are approximate as there is some small overhead to manage the
 #'   repeated tests
-#' 
+#'
 #' @export
 #' @import data.table
 #' @param expr expression to profile
@@ -17,7 +17,7 @@
 #'   a value other than null parameter \code{`target.time`} is ignored
 #' @param eval.fame an environment to evaluate \code{`expr`} in
 #' @param gc.torture whether to enable \code{`\link{gctorture}`}, note that this
-#'   should not be necessary since \code{`treeprof`} automatically re-runs a 
+#'   should not be necessary since \code{`treeprof`} automatically re-runs a
 #'   function enough times to get reasonable resolution; you will get more
 #'   stable results by running the same function thousands of times than by
 #'   using `gctorture` to slow it down by 10-1000x and just running it a couple
@@ -27,7 +27,7 @@
 #'   attributes attached
 
 treeprof <- function(
-  expr=NULL, target.time=5, times=NULL, interval=0.001, 
+  expr=NULL, target.time=5, times=NULL, interval=0.001,
   file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE
 ) {
   expr.capt <- substitute(expr)
@@ -40,7 +40,7 @@ treeprof <- function(
   if(is.null(times) && (!is.numeric(target.time) || !length(target.time) == 1L)) {
     stop("Argument `target.time` must be a numeric vector of length 1.")
   }
-  if(!is.environment(eval.frame)) 
+  if(!is.environment(eval.frame))
     stop("Argument `eval.frame` must be an environment.")
   if(is.null(file)) {
     temp.file <- tempfile()
@@ -55,35 +55,35 @@ treeprof <- function(
 
   clean_message("Profiling", verbose)
   lines <- run_rprof(                                     # run Rprof and return character vector
-    expr.quoted=expr.capt, interval=interval, target.time=target.time, 
+    expr.quoted=expr.capt, interval=interval, target.time=target.time,
     times=times, file=temp.file, frame=eval.frame, gc.torture=gc.torture,
-    verbose=verbose)  
+    verbose=verbose)
   clean_message("Parsing Rprof", verbose)
-  prof.mx <- parse_lines(lines$file)                      # cleanup / transform to matrix format 
+  prof.mx <- parse_lines(lines$file)                      # cleanup / transform to matrix format
   res <- melt_prof(prof.mx, lines$meta$levels)            # convert to long format / data.table
-  
+
   # Add the meta data
 
-  setattr(res, "meta.data", 
+  setattr(res, "meta.data",
     list(iterations=lines$meta$run.counter, time=lines$meta$time.total)
   )
   clean_message("Done", verbose)
   res
 }
 #' Actually Run the Code and Capture \code{`Rprof`} Output
-#' 
+#'
 #' @keywords internal
 #' @param expr.quoted a quoted expression
 #' @param frame a frame to evaluate the quoted expression in
 #' @return list containing the file name of the Rprof data plus some meta data
 
 run_rprof <- function(
-  expr.quoted, interval, target.time, times, file, frame=parent.frame(), 
+  expr.quoted, interval, target.time, times, file, frame=parent.frame(),
   gc.torture, verbose
 ) {
   # Get Rprof results, may need to run multiple times, and unfortunately as a
   # result of `system.time` inprecision need to jump through hoops if the run
-  # time is zero; maybe should switch to `microbenchmark`.  Also, one side 
+  # time is zero; maybe should switch to `microbenchmark`.  Also, one side
   # effect of this is we don't get times for each loop, but just for the entire \
   # execution
   on.exit(gctorture(FALSE))
@@ -100,7 +100,7 @@ run_rprof <- function(
     )
     Rprof(NULL)
     gctorture(FALSE)
-    if(inherits(attempt, "try-error")) 
+    if(inherits(attempt, "try-error"))
       stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
     run.counter <- times
   } else {             # attempt to run as many times as reqd to get target time
@@ -131,14 +131,14 @@ run_rprof <- function(
         test.run.timed[[length(test.run.timed) + 1L]] <- system.time(  # Growing vector, but doesn't happen much
           for(i in 1:(runs <- runs * run.multiplier)) {
             eval(expr.quoted, frame)
-          }, 
+          },
           gcFirst=FALSE
         )[["elapsed"]]
       )
       Rprof(NULL)
       gctorture(FALSE)
       print(test.run.timed)
-      if(inherits(attempt, "try-error")) 
+      if(inherits(attempt, "try-error"))
         stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
       test.run.time <- sum(test.run.timed)
       run.counter <- run.counter + runs
@@ -155,20 +155,20 @@ run_rprof <- function(
       )
       Rprof(NULL)
       gctorture(FALSE)
-      if(inherits(attempt, "try-error")) 
+      if(inherits(attempt, "try-error"))
         stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
       print(test.run.timed)
       run.counter <- run.counter + extra.reps * runs
-    }    
+    }
   }
   levels <- length(sys.calls())
   list(file=file, meta=list(run.counter=run.counter, time.total=sum(test.run.timed), levels=levels))
 }
 #' Converts \code{`\link{Rprof}`} Output to Matrix
-#' 
+#'
 #' @keywords internal
 #' @param a file name
-#' @return a matrix containing the parsed and reversed call stacks, with one 
+#' @return a matrix containing the parsed and reversed call stacks, with one
 #'   additional NA column added at the end
 
 parse_lines <- function(file) {
@@ -193,28 +193,28 @@ parse_lines <- function(file) {
   }
   # Remove quotes, should only be at beginning and end of each element, pluss
   # add parens
-  
-  cbind(gsub("\"", "", log.mx, fixed=TRUE), NA_character_) 
+
+  cbind(gsub("\"", "", log.mx, fixed=TRUE), NA_character_)
 }
 
 #' Generate The Final Treeprof Object
-#' 
+#'
 #' @keywords internal
 #' @param mx a character matrix where each row represents a tick dump, and each
 #'   column a level in the stack
 #' @return a \code{`treeprof`} object
 
 melt_prof <- function(mx, levels.to.exclude) {
-  if(ncol(mx) < levels.to.exclude + 6L) 
+  if(ncol(mx) < levels.to.exclude + 6L)
     stop("Logic error, matrix unexpected format; contact maintainer.")
   mx.unique.cols <- apply(mx[, (levels.to.exclude + 1L):(levels.to.exclude + 6L)], 2, unique)
   mx.valid.vals <- c(
-    "try", "tryCatch", "tryCatchList", 
+    "try", "tryCatch", "tryCatchList",
     "tryCatchOne", "doTryCatch", "system.time"
   )
   lapply(seq_along(mx.valid.vals),
     function(x) {
-      if(! mx.valid.vals[[x]] %in% mx.unique.cols[[x]]) 
+      if(! mx.valid.vals[[x]] %in% mx.unique.cols[[x]])
         stop("Logic Error, matrix in unexpected format; contact maintainer.")
   } )
   log.dt <- data.table( # workaround due to non implementation of param in data tables so far
@@ -222,8 +222,8 @@ melt_prof <- function(mx, levels.to.exclude) {
   )
   setnames(log.dt, paste0("V", 1:ncol(log.dt)))
   res <- log.dt[
-    !is.na(eval(as.name(names(log.dt)[2L]))), 
-    chop_stack_recurse(.SD, .BY, .N), 
+    !is.na(eval(as.name(names(log.dt)[2L]))),
+    chop_stack_recurse(.SD, .BY, .N),
     by=eval(names(log.dt)[1L])
   ][, 2L:5L, with=FALSE]
   setattr(res, "class",  c("treeprof", class(res)))
@@ -232,7 +232,7 @@ melt_prof <- function(mx, levels.to.exclude) {
   res
 }
 #' Recursively Descend into Rprof Ouput to Create Data for \code{`treeprof`}
-#' 
+#'
 #' Key next step is to prove that the output datatable can meaningfully
 #' be interpreted by row order.  In other words, if level n shows up once,
 #' and then at some later point you get level n again, then you are guaran-
@@ -252,7 +252,7 @@ melt_prof <- function(mx, levels.to.exclude) {
 #' Also, other items:
 #' - remember to check whether a function is called from different call stacks
 #'   to aggregate how much time is taken up by that function
-#' 
+#'
 #' @keywords internal
 #' @param dt a data table
 #' @param by a one length character vector denoting what the grouping variable
@@ -265,21 +265,21 @@ chop_stack_recurse <- function(dt, by, n, depth=0L) {
   if(nrow(dt)) {
     fun.name <- as.character(by[[1]])
     dt.res <- dt[
-      !is.na(eval(as.name(names(dt)[1L]))), 
-      chop_stack_recurse(.SD, .BY, .N, depth + 1L), 
+      !is.na(eval(as.name(names(dt)[1L]))),
+      chop_stack_recurse(.SD, .BY, .N, depth + 1L),
       by=eval(names(dt)[1L])
     ][, 2L:5L, with=FALSE]
     dt.res <- rbind(
       data.table(
-        fun.name=fun.name, 
-        level=depth, 
-        n=n, 
+        fun.name=fun.name,
+        level=depth,
+        n=n,
         n.self=n - dt.res[level==depth + 1, sum(n)]),
       dt.res)
   } else {
     dt.res <- data.table(
-      fun.name=character(0L), 
-      level=integer(0L), 
+      fun.name=character(0L),
+      level=integer(0L),
       n=integer(0L),
       n.self=integer(0L)
   ) }

@@ -1,8 +1,8 @@
 #' Convert a Treeprof object to `data.table`
-#' 
-#' Primarily used to display the underlying \code{`data.table`} structure of a 
+#'
+#' Primarily used to display the underlying \code{`data.table`} structure of a
 #' \code{`treeprof`} object
-#' 
+#'
 #' @export
 #' @aliases as.data.table.treeprof_fun_table
 #' @param x a \code{`treeprof`} object

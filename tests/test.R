@@ -18,7 +18,7 @@ profile({
 
 
 
-prof.mx <- parse_lines(lines$raw)                       # cleanup / transform to matrix format 
+prof.mx <- parse_lines(lines$raw)                       # cleanup / transform to matrix format
 res <- melt_prof(prof.mx)                               # convert to long format / data.table
 
 

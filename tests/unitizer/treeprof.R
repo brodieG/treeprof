@@ -2,7 +2,7 @@ library(treeprof)
 library(data.table)
 
 # The following code was used to generate the file we will use for all the tests
-# here.  Because the code that generates the file is inherently 
+# here.  Because the code that generates the file is inherently
 # non-deterministic we do not run it here, instead we just recover the file
 
 # library(functools)
@@ -21,11 +21,11 @@ unzip.paths <- unzip(zip.data, exdir=unzip.dir)
 treeprof.ref <- readRDS(system.file("extdata/matchcall.treeprof.RDS", package="treeprof"))
 
 unitizer_sect("Recreate treeprof from log", {
-  invisible(prof.mx <- treeprof:::parse_lines(unzip.paths))    # cleanup / transform to matrix format 
+  invisible(prof.mx <- treeprof:::parse_lines(unzip.paths))    # cleanup / transform to matrix format
   x <- treeprof:::melt_prof(prof.mx, 2L)                       # convert to long format / data.table
   attributes(x) <- attributes(treeprof.ref)                    # ad back attrs since they aren't created with the ad-hoc creation here
   all.equal(treeprof.ref, x)
-  x           
+  x
 } )
 unitizer_sect("Node management", {
   treeprof.ref.1 <- readRDS(system.file("extdata/type_alike.treeprof.RDS", package="treeprof"))
@@ -37,13 +37,13 @@ unitizer_sect("Node management", {
   treeprof:::collapse_passthru_fun(treeprof.ref, passthru)  # get rid of `try`
   treeprof:::collapse_passthru_funs(treeprof.ref)           # get rid of all passthrus (though doesn't actually test "tryCatch" removal)
   treeprof:::collapse_passthru_funs(treeprof.ref.2)         # this has a `tryCatch` to remove (though no `try`)
-  treeprof:::get_par_nodes(treeprof.ref)                    # for each node, the parent 
+  treeprof:::get_par_nodes(treeprof.ref)                    # for each node, the parent
   sort(treeprof.ref, decreasing=TRUE)                       # branches sorted from fastest to slowest recursively
   treeprof:::trim_branch_fast(treeprof.ref, 1L, 5L)         # remove fast branches
-  treeprof:::trim_branch_fast(treeprof.ref, 35L, 5L)        # Should unfurl all children of `try`, though actual screen output won't show it  
+  treeprof:::trim_branch_fast(treeprof.ref, 35L, 5L)        # Should unfurl all children of `try`, though actual screen output won't show it
 
   print(treeprof.ref.1) # `tryCatch`
-  print(treeprof.ref.2) # nested `try` functions caused problems before 
+  print(treeprof.ref.2) # nested `try` functions caused problems before
 } )
 unitizer_sect("Time Formatting", {
   vec <- c(.015, .015 * .005, .000001, 0.000234, 0.000074)

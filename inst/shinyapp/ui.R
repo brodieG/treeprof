@@ -8,8 +8,8 @@ shinyUI(pageWithSidebar(
 
   sidebarPanel(
     selectInput("variable", "Variable:",
-                list("Cylinders" = "cyl", 
-                     "Transmission" = "am", 
+                list("Cylinders" = "cyl",
+                     "Transmission" = "am",
                      "Gears" = "gear")),
 
     checkboxInput("outliers", "Show outliers", FALSE)
