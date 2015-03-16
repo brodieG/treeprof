@@ -25,7 +25,9 @@
 #' @param verbose logical(1L) whether to output status to screen
 #' @param collapse.recursion whether to collapse all recursive calls on to
 #'   themselves so they appear as just one sequence of calls instead of nested
-#'   sequences
+#'   sequences; if any calls to \code{Recall} appear these are automatically
+#'   stripped from the stack trace so do not use this feature if you are using
+#'   a function by that name other than the built-in base function
 #' @return a treeprof object, which is really just a `data.table` with some
 #'   attributes attached
 
@@ -191,6 +193,7 @@ parse_lines <- function(file, collapse.recursion=FALSE) {
       " names that contain double-quote characters."
   ) }
   if(collapse.recursion) {
+    lines <- gsub("\"Recall\" ", "", lines)       # Recall just calls function, so blow them away
     pat <- "(((?:\"[^\"]+\" )+?)\\2+)"
     lines <- gsub(pat, "\\2", lines, perl=TRUE)
   }
@@ -212,6 +215,9 @@ parse_lines <- function(file, collapse.recursion=FALSE) {
 #' @keywords internal
 #' @param mx a character matrix where each row represents a tick dump, and each
 #'   column a level in the stack
+#' @param collapse.recursion whether recursion was collapsed, necessary because
+#'   part of the baseline calls include an "eval eval" segment that gets
+#'   collapsed
 #' @return a \code{`treeprof`} object
 
 melt_prof <- function(mx, levels.to.exclude, collapse.recursion=FALSE) {
