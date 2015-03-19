@@ -30,3 +30,16 @@ as.data.table.treeprof_fun_table <- function(x, keep.rownames=FALSE) {
 clean_message <- function(msg, verbose) {
   if(verbose) message(msg)
 }
+
+#' Copies Attributes Lost With `[`
+#'
+#' Modifies \code{target} by reference.  Only copies a subset of attributes as
+#' often it doesn't make sense to copy row names, etc.
+#'
+#' @keywords internal
+
+copy_attrs <- function(target, current) {
+  setattr(target, "meta.data", attr(current, "meta.data"))
+  setattr(target, "time.unit", attr(current, "time.unit"))
+  setattr(target, "class", class(current))
+}

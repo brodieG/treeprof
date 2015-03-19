@@ -56,9 +56,9 @@ as.character.treeprof <- function(
     stop("Argument `disp.unit` must be character(1L).")
 
   x.new <- copy(x)
-  attributes(x.new) <- attributes(x)  # copy strips `treeprof` class so need to restore
   x.new <- collapse_passthru_funs(x.new)
-  x.new <- sort(x.new, decreasing=TRUE)
+  x.new <- sort(x.new, decreasing=TRUE)  # treeprof method
+
   if(!inherits(x.new, "treeprof_norm")) {
     x.new <- normalize(x.new, disp.unit)
   }

@@ -45,6 +45,7 @@ trim_branch_fast <- function(x, i, disp.thresh) {
     i
   }
   x.new <- x[ n >= threshold | id %in% nodes.keep ]
+  copy_attrs(x.new, x)
   x.new
 }
 #' Get \code{`ids`} of Descendant Nodes
@@ -164,10 +165,10 @@ collapse_passthru_fun <- function(x, passthru) {
     new.children[level > en.lvl, level:=level - ex.lvl + en.lvl]
     setcolorder(new.children, names(x.cp))
 
-    x.cp.class <- class(x.cp)
-    x.cp <- rbindlist(list(x.cp[!children], new.children))
-    class(x.cp) <- x.cp.class
-    setkey(x.cp, id)
+    x.cp.new <- rbindlist(list(x.cp[!children], new.children))
+    copy_attrs(x.cp.new, x.cp)
+    setkey(x.cp.new, id)
+    x.cp <- x.cp.new
   }
   x.cp
 }
@@ -275,6 +276,7 @@ sort.treeprof <- function(x, decreasing=FALSE, ...) {
   x.cp <- x[do.call(order, c(res.lst, decreasing=decreasing))]
   x.cp[, id:=1:nrow(x.cp)]
   setkey(x.cp, id)
+  copy_attrs(x.cp, x)
   x.cp
 }
 #' Converts to desired time units
@@ -320,4 +322,5 @@ normalize <- function(x, disp.unit) {
   }
   attr(x.cp, "time.unit") <- disp.unit
   setattr(x.cp, "class", c("treeprof_norm", class(x.cp)))
+  x.cp
 }
