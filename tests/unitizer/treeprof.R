@@ -21,8 +21,10 @@ unzip.paths <- unzip(zip.data, exdir=unzip.dir)
 treeprof.ref <- readRDS(system.file("extdata/matchcall.treeprof.RDS", package="treeprof"))
 
 unitizer_sect("Recreate treeprof from log", {
-  invisible(prof.mx <- treeprof:::parse_lines(unzip.paths))    # cleanup / transform to matrix format
-  x <- treeprof:::melt_prof(prof.mx, 2L)                       # convert to long format / data.table
+  invisible(  # cleanup / transform to matrix format
+    prof.mx <- treeprof:::parse_lines(list(file=unzip.paths, meta=list(levels=2L)))
+  )
+  x <- treeprof:::melt_prof(prof.mx)                           # convert to long format / data.table
   attributes(x) <- attributes(treeprof.ref)                    # ad back attrs since they aren't created with the ad-hoc creation here
   all.equal(treeprof.ref, x)
   x
@@ -70,4 +72,30 @@ unitizer_sect("Verbosity", # Don't care so much about value since non-determinis
   {
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1)
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1, verbose=FALSE)
+} )
+unitizer_sect("Recursive", {
+  rec.data <- readRDS(system.file("extdata/recursive.RDS", package="treeprof"))
+  tmp <- tempfile()
+  cat(rec.data[[1L]], sep="\n", file=tmp)
+  lines <- modifyList(rec.data[[2]], list(file=tmp));
+  res.norm <- treeprof:::melt_prof(treeprof:::parse_lines(lines))
+  res.crec <-  treeprof:::melt_prof(
+    treeprof:::parse_lines(lines, collapse.recursion=TRUE)
+  )
+  # no recursion collapse
+  (
+    setattr(
+      res.norm, "meta.data",
+      list(
+        iterations=rec.data[[2L]]$meta$run.counter,
+        time=rec.data[[2L]]$meta$time.total)
+  ) )
+  # with recursion collapse
+  (
+    setattr(
+      res.crec, "meta.data",
+      list(
+        iterations=rec.data[[2L]]$meta$run.counter,
+        time=rec.data[[2L]]$meta$time.total)
+  ) )
 } )
