@@ -23,12 +23,18 @@
 #'   using `gctorture` to slow it down by 10-1000x and just running it a couple
 #'   of times.
 #' @param verbose logical(1L) whether to output status to screen
+#' @param collapse.recursion whether to collapse all recursive calls on to
+#'   themselves so they appear as just one sequence of calls instead of nested
+#'   sequences; if any calls to \code{Recall} appear these are automatically
+#'   stripped from the stack trace so do not use this feature if you are using
+#'   a function by that name other than the built-in base function
 #' @return a treeprof object, which is really just a `data.table` with some
 #'   attributes attached
 
 treeprof <- function(
   expr=NULL, target.time=5, times=NULL, interval=0.001,
-  file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE
+  file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE,
+  collapse.recursion=FALSE
 ) {
   expr.capt <- substitute(expr)
   if(!is.null(interval) && (!is.numeric(interval) || !length(interval) == 1L)) {
@@ -50,6 +56,8 @@ treeprof <- function(
   }
   if(!is.logical(gc.torture) || length(gc.torture) != 1L)
     stop("Argument `gctorture` must be a one length integer")
+  if(!isTRUE(collapse.recursion) && !identical(collapse.recursion, FALSE))
+    stop("Argument `collapse.recursion` must be TRUE or FALSE")
 
   # Now process resulting Rprof output
 
@@ -59,8 +67,8 @@ treeprof <- function(
     times=times, file=temp.file, frame=eval.frame, gc.torture=gc.torture,
     verbose=verbose)
   clean_message("Parsing Rprof", verbose)
-  prof.mx <- parse_lines(lines$file)                      # cleanup / transform to matrix format
-  res <- melt_prof(prof.mx, lines$meta$levels)            # convert to long format / data.table
+  prof.mx <- parse_lines(lines, collapse.recursion)       # cleanup / transform to matrix format
+  res <- melt_prof(prof.mx)                               # convert to long format / data.table
 
   # Add the meta data
 
@@ -167,29 +175,46 @@ run_rprof <- function(
 #' Converts \code{`\link{Rprof}`} Output to Matrix
 #'
 #' @keywords internal
-#' @param a file name
+#' @param collapse.recursion logical(1L) whether to collapse recursive calls
+#'   on themselves
+#' @param lines a list with file name and file meta data as produced by
+#'   \code{\link{run_rprof}}
 #' @return a matrix containing the parsed and reversed call stacks, with one
 #'   additional NA column added at the end
 
-parse_lines <- function(file) {
-  con <- file(file)
-  lines <- readLines(con)
+parse_lines <- function(lines, collapse.recursion=FALSE) {
+  con <- file(lines$file)
+  lines.text <- readLines(con)
   close(con)
-  lines <- lines[!grepl("^sample\\.interval=[0-9]+$", lines)]
-  if(length(lines) < 2L) {
+  lines.text <- lines.text[!grepl("^sample\\.interval=[0-9]+$", lines.text)]  # expensive check
+  if(length(lines.text) < 2L) {
     stop("Log file had fewer than 2 lines")
   }
-  if(!all(grepl('^("[^"]*" )+$', lines))) {
+  if(!all(grepl('^("[^"]*" )+$', lines.text))) {
     stop(
       "Log file in unexpected format; make sure you are not using function ",
       " names that contain double-quote characters."
   ) }
-  tokens <- regmatches(lines[-1L], gregexpr('"([^"]*)"', lines[-1L]))
+  # Get rid of baseline calls that are unrelated to what we're profiling
+
+  lines.trim <- gsub(
+    paste0('("[^"]*" ){0,', lines$meta$levels + 8L, '}$'),
+    "", lines.text
+  )
+  # Collapse recursion
+
+  if(collapse.recursion) {
+    lines.trim <- gsub("\"Recall\" ", "", lines.trim)       # Recall just calls function, so blow them away
+    pat <- "(((?:\"[^\"]+\" )+?)\\2+)"
+    lines.trim <- gsub(pat, "\\2", lines.trim, perl=TRUE)
+  }
+  tokens <- regmatches(lines.trim[-1L], gregexpr('"([^"]*)"', lines.trim[-1L]))
   log.mx <- matrix(
     NA_character_, nrow=length(tokens), ncol=max(unlist(lapply(tokens, length)))
   )
   for(i in seq_along(tokens)) {
-    log.mx[i, 1L:length(tokens[[i]])] <- rev(tokens[[i]])
+    if(length(tokens[[i]]))
+      log.mx[i, 1L:length(tokens[[i]])] <- rev(tokens[[i]])
   }
   # Remove quotes, should only be at beginning and end of each element, pluss
   # add parens
@@ -204,21 +229,9 @@ parse_lines <- function(file) {
 #'   column a level in the stack
 #' @return a \code{`treeprof`} object
 
-melt_prof <- function(mx, levels.to.exclude) {
-  if(ncol(mx) < levels.to.exclude + 6L)
-    stop("Logic error, matrix unexpected format; contact maintainer.")
-  mx.unique.cols <- apply(mx[, (levels.to.exclude + 1L):(levels.to.exclude + 6L)], 2, unique)
-  mx.valid.vals <- c(
-    "try", "tryCatch", "tryCatchList",
-    "tryCatchOne", "doTryCatch", "system.time"
-  )
-  lapply(seq_along(mx.valid.vals),
-    function(x) {
-      if(! mx.valid.vals[[x]] %in% mx.unique.cols[[x]])
-        stop("Logic Error, matrix in unexpected format; contact maintainer.")
-  } )
+melt_prof <- function(mx) {
   log.dt <- data.table( # workaround due to non implementation of param in data tables so far
-    data.frame(mx, stringsAsFactors=FALSE)[-(1L:(levels.to.exclude + 8L))]
+    data.frame(mx, stringsAsFactors=FALSE)
   )
   setnames(log.dt, paste0("V", 1:ncol(log.dt)))
   res <- log.dt[
