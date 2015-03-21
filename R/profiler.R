@@ -145,7 +145,6 @@ run_rprof <- function(
       )
       Rprof(NULL)
       gctorture(FALSE)
-      print(test.run.timed)
       if(inherits(attempt, "try-error"))
         stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
       test.run.time <- sum(test.run.timed)
