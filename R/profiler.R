@@ -90,18 +90,41 @@
 
 treeprof <- function(
   expr=NULL, target.time=5, times=NULL, interval=0.001,
+  file=NULL, eval.frame=parent.frame(), gc="auto", verbose=TRUE,
+  collapse.recursion=FALSE
+) {
+  treeprof_(
+    expr.quoted=substitute(expr), target.time=target.time, times=times,
+    interval=interval, file=file, eval.frame=eval.frame, gc=gc, verbose=verbose,
+    collapse.recursion=collapse.recursion
+  )
+}
+#' @rdname treeprof
+#' @export
+
+treeprof_ <- function(
+  expr.quoted=NULL, target.time=5, times=NULL, interval=0.001,
   file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE,
   collapse.recursion=FALSE
 ) {
-  expr.capt <- substitute(expr)
   if(!is.null(interval) && (!is.numeric(interval) || !length(interval) == 1L)) {
     stop("Argument `interval` must be a numeric vector of length 1.")
   }
-  if(!is.null(times) && (!is.numeric(times) || round(times, 0) != times|| !length(times) == 1L)) {
-    stop("Argument `times` must be an integer vector of length 1.")
+  if(
+    !is.null(times) &&
+    (
+      !is.numeric(times) || round(times, 0) != times ||
+      !length(times) == 1L || times < 1
+    )
+  ) {
+    stop("Argument `times` must be a strictly postive integer vector of length 1.")
   }
-  if(is.null(times) && (!is.numeric(target.time) || !length(target.time) == 1L)) {
-    stop("Argument `target.time` must be a numeric vector of length 1.")
+  if(
+    is.null(times) && (
+      !is.numeric(target.time) || !length(target.time) == 1L || target.time < 0.1
+    )
+  ) {
+    stop("Argument `target.time` must be a numeric vector of length 1 greater than 0.1.")
   }
   if(!is.environment(eval.frame))
     stop("Argument `eval.frame` must be an environment.")
@@ -111,8 +134,15 @@ treeprof <- function(
   } else {
     temp.file <- file
   }
-  if(!is.logical(gc.torture) || length(gc.torture) != 1L)
-    stop("Argument `gctorture` must be a one length integer")
+  if(!length(gc) == 1L) {
+    stop("Argument `gc` must be length 1")
+  } else if (is.character(gc) && !gc %in% c("auto", "torture")) {
+    stop("Argument `gc` must be \"auto\" or \"torture\" or logical")
+  } else if (is.logical(gc) && is.na(gc)) {
+    stop("Argument `gc` may not be NA")
+  } else {
+    stop("Argument `gc` must be logical or character (see docs).")
+  }
   if(!isTRUE(collapse.recursion) && !identical(collapse.recursion, FALSE))
     stop("Argument `collapse.recursion` must be TRUE or FALSE")
 
@@ -121,8 +151,8 @@ treeprof <- function(
   clean_message("Profiling", verbose)
   lines <- run_rprof(                                     # run Rprof and return character vector
     expr.quoted=expr.capt, interval=interval, target.time=target.time,
-    times=times, file=temp.file, frame=eval.frame, gc.torture=gc.torture,
-    verbose=verbose)
+    times=times, file=temp.file, frame=eval.frame, gc=gc, verbose=verbose
+  )
   clean_message("Parsing Rprof", verbose)
   prof.mx <- parse_lines(lines, collapse.recursion)       # cleanup / transform to matrix format
   res <- melt_prof(prof.mx)                               # convert to long format / data.table
@@ -144,90 +174,105 @@ treeprof <- function(
 
 run_rprof <- function(
   expr.quoted, interval, target.time, times, file, frame=parent.frame(),
-  gc.torture, verbose
+  gc, verbose
 ) {
   # Get Rprof results, may need to run multiple times, and unfortunately as a
   # result of `system.time` inprecision need to jump through hoops if the run
   # time is zero; maybe should switch to `microbenchmark`.  Also, one side
   # effect of this is we don't get times for each loop, but just for the entire \
   # execution
-  on.exit(gctorture(FALSE))
-  if(!is.null(times)) { # just repeat requested number of times
-    Rprof(NULL)
-    gc(FALSE)
-    gctorture(gc.torture)
-    Rprof(file, interval=interval)
-    attempt <- try(
-      test.run.timed[[1L]] <- system.time(
-      for(i in seq(times)) {
-        eval(expr.quoted, frame)
-      }, gcFirst=FALSE)[["elapsed"]]
-    )
-    Rprof(NULL)
-    gctorture(FALSE)
-    if(inherits(attempt, "try-error"))
-      stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
-    run.counter <- times
-  } else {             # attempt to run as many times as reqd to get target time
-    mult <- 1
-    Rprof(NULL)
-    test.run.timed <- numeric(1L)
-    gc(FALSE)
-    gctorture(gc.torture)
-    Rprof(file, interval=interval)
-    attempt <- try(
-      test.run.timed[[1]] <- system.time(eval(expr.quoted, frame), gcFirst=FALSE)[["elapsed"]]
-    )
-    Rprof(NULL)
-    gctorture(FALSE)
-    if(inherits(attempt, "try-error")) {
-      stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
-    }
-    test.run.time <- test.run.timed[[1]]
-    run.multiplier <- 50
-    runs <- run.counter <- 1
-    clean_message("Estimate evaluation time", verbose)
 
-    while(test.run.time < 0.02) {  # If runs too fast, run 50 more times, and so on
-      clean_message("Fast Loop, still estimating", verbose)
-      gctorture(gc.torture)
-      Rprof(file, interval=interval, append=TRUE)
-      attempt <- try(
-        test.run.timed[[length(test.run.timed) + 1L]] <- system.time(  # Growing vector, but doesn't happen much
-          for(i in 1:(runs <- runs * run.multiplier)) {
-            eval(expr.quoted, frame)
-          },
-          gcFirst=FALSE
-        )[["elapsed"]]
+  Rprof(NULL)
+  if(identical(gc, "torture")) {
+    gc.torture <- TRUE
+    gc <- FALSE
+  } else gc.torture <- FALSE
+
+  test.run.timed <- treeprof_eval_each(
+    expr.quoted, frame, 1L, file, interval, gc = !identical(gc, FALSE),
+    gc.torture = gc.torture
+  )
+  run.counter <- 1L
+  clean_message(
+    paste0("First run in ", format(test.run.timed), " seconds"), verbose
+  )
+  if(identical(gc, "auto")) gc <- if(test.run.timed >= 0.25) TRUE else FALSE
+
+  # just repeat requested number of times
+
+  if(!is.null(times)) {
+    test.run.timed <- test.run.timed + treeprof_eval_each(
+      expr.quoted, frame, times - 1L, file, interval, gc=gc,
+      gc.torture=gc.torture
+    )
+    run.counter <- run.counter + times - 1L
+  } else {
+    # attempt to run as many times as reqd to get target time.  If evaluation is
+    # under precision (roughly) for system.time, keep evaling until we get
+    # enough time
+
+    run.multiplier <- 1
+
+    while(test.run.timed < 0.02) {
+      clean_message("Fast Loop, still estimating required repetitions", verbose)
+      run.multiplier <- run.multiplier * 5
+      test.run.timed <- test.run.timed + treeprof_eval_each(
+        expr.quoted, frame, times=run.multiplier, file, interval, gc=gc,
+        gc.torture=gc.torture
       )
-      Rprof(NULL)
-      gctorture(FALSE)
-      if(inherits(attempt, "try-error"))
-        stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
-      test.run.time <- sum(test.run.timed)
-      run.counter <- run.counter + runs
+      run.counter <- run.counter + run.multiplier
     }
-    if((extra.reps <- floor(target.time / test.run.time)) > 2 ) {  # Didn't fill allotted time, so rep more
+    times <- ceiling(
+      (target.time - test.run.timed) / test.run.timed * run.counter
+    )
+    # Keep repeating if needed
+
+    if(times > 0) {
       clean_message(paste0("Looping to ", target.time, " seconds"), verbose)
-      gctorture(gc.torture)
-      Rprof(file, interval=interval, append=TRUE)
-      attempt <- try(
-        test.run.timed[[length(test.run.timed) + 1L]] <- system.time(
-        for(i in 1:(extra.reps * run.counter)) {
-          eval(expr.quoted, frame)
-        }, gcFirst=FALSE)[["elapsed"]]
+      test.run.timed <- test.run.timed + treeprof_eval_each(
+        expr.quoted, frame, times=times, file, interval, gc=gc,
+        gc.torture=gc.torture
       )
-      Rprof(NULL)
-      gctorture(FALSE)
-      if(inherits(attempt, "try-error"))
-        stop("Failed attempting to evaluate argument `expr.quoted`; see previous error.")
-      print(test.run.timed)
-      run.counter <- run.counter + extra.reps * runs
+      run.counter <- run.counter + times
     }
   }
   levels <- length(sys.calls())
-  list(file=file, meta=list(run.counter=run.counter, time.total=sum(test.run.timed), levels=levels))
+  list(
+    file=file, meta=list(run.counter=run.counter, time.total=test.run.timed,
+    levels=levels)
+  )
 }
+#' Internal Eval Tool
+#'
+#' Just evals an expression, but with the advantage of having a distinct name
+#' that should be popping up for first time in stack.
+#'
+#' @keywords internal
+
+treeprof_eval_each <- function(
+  exp, frame, times, prof.file, interval, gc, gc.torture
+) {
+  index <- seq(times)
+  if(gc.torture) {
+    gctorture(gc.torture)
+    on.exit(gc.torture=FALSE)
+  }
+  time <- system.time(
+    {
+      Rprof(prof.file, interval=interval, append=TRUE)
+      for(i in index) treeprof_eval(exp, frame, gc)
+      Rprof(NULL)
+    },
+    gcFirst=FALSE
+  )[["elapsed"]]
+  if(gc.torture) gctorture(FALSE)
+  time
+}
+treeprof_eval <- function(exp, frame, gc=TRUE) {
+  if(gc) gc(FALSE)
+  eval(exp, frame)
+}
+
 #' Converts \code{`\link{Rprof}`} Output to Matrix
 #'
 #' @keywords internal
