@@ -327,7 +327,7 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   if(any(invalid))
     stop("Internally inconsistent profile log file; contact maintainer.")
 
-  lines.final <- lines.trim[lines.ok]
+  lines.final <- sub('"eval" "eval" $', "", lines.trim[lines.ok])
 
   # Collapse recursion
 
@@ -348,9 +348,6 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   # add parens
 
   res <- cbind(gsub("\"", "", log.mx, fixed=TRUE), NA_character_)
-  if(ncol(res) < 2L)
-    stop("Logic Error: insufficient stack depth; contact maintainer.")
-  res <- res[, -(1:2)]  # drop the eval eval cols
 
   # set attributes
 
