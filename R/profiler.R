@@ -104,9 +104,10 @@ treeprof <- function(
 
 treeprof_ <- function(
   expr.quoted=NULL, target.time=5, times=NULL, interval=0.001,
-  file=NULL, eval.frame=parent.frame(), gc.torture=FALSE, verbose=TRUE,
+  file=NULL, eval.frame=parent.frame(), gc="auto", verbose=TRUE,
   collapse.recursion=FALSE
 ) {
+  if(!is.language(expr.quoted)) stop("Argument `expr.quoted` must be language.")
   if(!is.null(interval) && (!is.numeric(interval) || !length(interval) == 1L)) {
     stop("Argument `interval` must be a numeric vector of length 1.")
   }
@@ -130,7 +131,7 @@ treeprof_ <- function(
     stop("Argument `eval.frame` must be an environment.")
   if(is.null(file)) {
     temp.file <- tempfile()
-    on.exit(file.remove(temp.file))
+    on.exit(if(file.exists(temp.file)) file.remove(temp.file))
   } else {
     temp.file <- file
   }
@@ -140,7 +141,7 @@ treeprof_ <- function(
     stop("Argument `gc` must be \"auto\" or \"torture\" or logical")
   } else if (is.logical(gc) && is.na(gc)) {
     stop("Argument `gc` may not be NA")
-  } else {
+  } else if (!is.logical(gc) && !is.character(gc)) {
     stop("Argument `gc` must be logical or character (see docs).")
   }
   if(!isTRUE(collapse.recursion) && !identical(collapse.recursion, FALSE))
@@ -149,23 +150,26 @@ treeprof_ <- function(
   # Save settings in list
 
   rprof.set <- list(
-    expr.quoted=expr.capt, interval=interval, target.time=target.time,
+    expr.quoted=expr.quoted, interval=interval, target.time=target.time,
     times=times, file=temp.file, frame=eval.frame, gc=gc, verbose=verbose
   )
   # Now process resulting Rprof output
 
-  clean_message("Profiling", set$verbose)
+  clean_message("Profiling", verbose)
   lines <- run_rprof(rprof.set)                      # run Rprof and return character vector
-  clean_message("Parsing Rprof", set$verbose)
+  clean_message("Parsing Rprof", verbose)
   prof.mx <- parse_lines(lines, collapse.recursion)  # cleanup / transform to matrix format
   res <- melt_prof(prof.mx)                          # convert to long format / data.table
 
   # Add the meta data
 
   setattr(res, "meta.data",
-    list(iterations=lines$meta$run.counter, time=lines$meta$time.total)
+    list(
+      iterations=lines$meta$run.counter,
+      time=lines$meta$time.total * attr(prof.mx, "eval.time.fraction")
+    )
   )
-  clean_message("Done", set$verbose)
+  clean_message("Done", verbose)
   res
 }
 #' Actually Run the Code and Capture \code{`Rprof`} Output
