@@ -332,9 +332,9 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   # Collapse recursion
 
   if(collapse.recursion) {
-    lines.trim <- gsub("\"Recall\" ", "", lines.trim)       # Recall just calls function, so blow them away
+    lines.final <- gsub("\"Recall\" ", "", lines.final)       # Recall just calls function, so blow them away
     pat <- "(((?:\"[^\"]+\" )+?)\\2+)"
-    lines.trim <- gsub(pat, "\\2", lines.trim, perl=TRUE)
+    lines.final <- gsub(pat, "\\2", lines.final, perl=TRUE)
   }
   tokens <- regmatches(lines.final, gregexpr('"([^"]*)"', lines.final))
   log.mx <- matrix(
