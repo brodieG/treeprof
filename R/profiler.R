@@ -1,14 +1,69 @@
 #' Profile with Rprof and Display As Tree
 #'
-#' Uses RProf to profile an expression which will be repeatedly evaluated until
-#' target execution time is met.
+#' Uses \code{\link{Rprof}} to profile an expression, and processes the data to
+#' display as a tree.  Intended for more complex R code for which a visual
+#' representation of the call branches is useful.
 #'
-#' @note timings are approximate as there is some small overhead to manage the
-#'   repeated tests
+#' \code{treeprof} returns a \code{"treeprof"} class object.  You may use the
+#' \code{\link{shinyfy}} function on that object to invoke an interactive
+#' UI to explore the tree, or just rely on the \code{print} method for a
+#' terminal display.
+#'
+#' Since treeprof uses \code{\link{Rprof}} profiling data it is subject to the
+#' same limitations as that function.  If you are trying to optimize a small
+#' fast function you may be better served by \code{microbenchmark}.
+#'
+#' @section Repeated Evaluation:
+#'
+#' \code{Rprof} works by dumping the call stack at specified intervals.  If the
+#' code you are profiling consists of many calls, each of which might execute
+#' quickly, it is helpful to ensure the code is evaluated sufficient times for
+#' each meaningful call to be recorded.  To achieve this \code{treeprof}
+#' evaluates the code to profile once and based on that one timing determines
+#' how many times to re-evaluate the code to reach approximately five seconds
+#' of evaluation time.  We have found five seconds is sufficient to produce
+#' useful profiling information without testing our patience too much.
+#'
+#' You may modify this behavior with the \code{target.time} and \code{times}
+#' parameters.
+#'
+#' @section Timings:
+#'
+#' \code{treeprof} uses \code{\link{system.time}} to time overall evaluation
+#' time.  Since \code{system.time} precision is OS dependent and often limited
+#' to milliseconds or worse, we only time the entire process, including all
+#' repetitions required to get to our target evaluation time.  As a result, we
+#' only provide average evaluation time.
+#'
+#' The total timing is allocated to each call depending on what fraction of the
+#' total recorded ticks each call accounts for.
+#'
+#' @section Garbage Collection:
+#'
+#' R's garbage collection can lead to variability in timings, which is
+#' particularly problematic with \code{treeprof} since it only reports the
+#' average timing.  You can mitigate this variability by forcing a garbage
+#' collection prior to each evaluation of the code to profile.  Unfortunately
+#' garbage collection carries substantial overhead (on the order of 60ms on
+#' our system), so we only enable this behavior on code that takes over 250ms
+#' per evaluation.  You can change this behavior with the \code{gc} parameter.
+#'
+#' Note that \code{target.time} is inclusive of the time required to run the
+#' garbage collection, so you may want to consider increasing it if you enable
+#' garbage collection for fast evaluating expressions.
+#'
+#' You may run your code with \code{\link{gctorture}} on, but you will get more
+#' stable results by running the same function thousands of times than by using
+#' `gctorture` to slow it down by 10-1000x and just running it a couple of
+#' times.
 #'
 #' @export
 #' @import data.table
-#' @param expr expression to profile
+#' @seealso \code{\link{Rprof}}, \code{\link{summaryRprof}}, \code{\link{gc}},
+#'   \code{\link{gctorture}}
+#' @param expr expression to profile, which is captured by
+#'   \code{\link{substitute}}; if you wish to pass a quoted expression to
+#'   evaluate use \code{treeprof_}
 #' @param interval numeric to dump stack at, NULL to auto-select (see notes)
 #' @param target.time numeric number of seconds to run benchmark for; this is an
 #'   approximate suggestion and only holds when the expression excutes faster
@@ -16,20 +71,22 @@
 #' @param times integer how many times to run the expression; if this is set to
 #'   a value other than null parameter \code{`target.time`} is ignored
 #' @param eval.fame an environment to evaluate \code{`expr`} in
-#' @param gc.torture whether to enable \code{`\link{gctorture}`}, note that this
-#'   should not be necessary since \code{`treeprof`} automatically re-runs a
-#'   function enough times to get reasonable resolution; you will get more
-#'   stable results by running the same function thousands of times than by
-#'   using `gctorture` to slow it down by 10-1000x and just running it a couple
-#'   of times.
-#' @param verbose logical(1L) whether to output status to screen
-#' @param collapse.recursion whether to collapse all recursive calls on to
-#'   themselves so they appear as just one sequence of calls instead of nested
-#'   sequences; if any calls to \code{Recall} appear these are automatically
-#'   stripped from the stack trace so do not use this feature if you are using
-#'   a function by that name other than the built-in base function
-#' @return a treeprof object, which is really just a `data.table` with some
-#'   attributes attached
+#' @param gc garbage collection mode: \itemize{
+#'   \item "auto" will use \code{gc} before each expression evaluation if the
+#'     first expression evaluation lasts more than 250ms, otherwise will not use
+#'     \code{gc} except for the first evaluation
+#'   \item TRUE runs \code{gc} before each evaluation
+#'   \item FALSE never runs \code{gc} (though R may chose to do so on its own)
+#'   \item "torture" run with \code{gctorture(TRUE)}
+#' }
+#' @param verbose logical(1L) whether to output status updates to screen
+#' @param collapse.recursion logical(1L) whether to collapse all recursive calls
+#'   on tothemselves so they appear as just one sequence of calls instead of
+#'   nested sequences; if any calls to \code{Recall} appear these are
+#'   automatically stripped from the stack trace so do not use this feature if
+#'   you are using a function by that name other than the built-in base function
+#' @return a treeprof object, which is really just a \code{\link{data.table}}
+#'   with some attributes attached and \code{print/summary} methods
 
 treeprof <- function(
   expr=NULL, target.time=5, times=NULL, interval=0.001,
