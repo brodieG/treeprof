@@ -146,23 +146,26 @@ treeprof_ <- function(
   if(!isTRUE(collapse.recursion) && !identical(collapse.recursion, FALSE))
     stop("Argument `collapse.recursion` must be TRUE or FALSE")
 
-  # Now process resulting Rprof output
+  # Save settings in list
 
-  clean_message("Profiling", verbose)
-  lines <- run_rprof(                                     # run Rprof and return character vector
+  rprof.set <- list(
     expr.quoted=expr.capt, interval=interval, target.time=target.time,
     times=times, file=temp.file, frame=eval.frame, gc=gc, verbose=verbose
   )
-  clean_message("Parsing Rprof", verbose)
-  prof.mx <- parse_lines(lines, collapse.recursion)       # cleanup / transform to matrix format
-  res <- melt_prof(prof.mx)                               # convert to long format / data.table
+  # Now process resulting Rprof output
+
+  clean_message("Profiling", set$verbose)
+  lines <- run_rprof(rprof.set)                      # run Rprof and return character vector
+  clean_message("Parsing Rprof", set$verbose)
+  prof.mx <- parse_lines(lines, collapse.recursion)  # cleanup / transform to matrix format
+  res <- melt_prof(prof.mx)                          # convert to long format / data.table
 
   # Add the meta data
 
   setattr(res, "meta.data",
     list(iterations=lines$meta$run.counter, time=lines$meta$time.total)
   )
-  clean_message("Done", verbose)
+  clean_message("Done", set$verbose)
   res
 }
 #' Actually Run the Code and Capture \code{`Rprof`} Output
@@ -172,10 +175,7 @@ treeprof_ <- function(
 #' @param frame a frame to evaluate the quoted expression in
 #' @return list containing the file name of the Rprof data plus some meta data
 
-run_rprof <- function(
-  expr.quoted, interval, target.time, times, file, frame=parent.frame(),
-  gc, verbose
-) {
+run_rprof <- function(rprof.set) {
   # Get Rprof results, may need to run multiple times, and unfortunately as a
   # result of `system.time` inprecision need to jump through hoops if the run
   # time is zero; maybe should switch to `microbenchmark`.  Also, one side
@@ -183,62 +183,72 @@ run_rprof <- function(
   # execution
 
   Rprof(NULL)
-  if(identical(gc, "torture")) {
-    gc.torture <- TRUE
-    gc <- FALSE
-  } else gc.torture <- FALSE
+  set <- rprof.set
+  set$gc <- !identical(rprof.set$gc, FALSE)
 
-  test.run.timed <- treeprof_eval_each(
-    expr.quoted, frame, 1L, file, interval, gc = !identical(gc, FALSE),
-    gc.torture = gc.torture
-  )
+  if(identical(rprof.set$gc, "torture")) {
+    set$gc.torture <- TRUE
+    set$gc <- FALSE
+  } else {
+    set$gc.torture <- FALSE
+  }
+  # Run once, figure out whether to gc or not
+
+  if(!identical(rprof.set, FALSE)) gc()
+  test.run.timed <- treeprof_eval_each(set, times=1L)
+
+  if(identical(rprof.set$gc, "auto")) {
+    if(test.run.timed >= 0.25) {
+      set$gc <- TRUE
+      wwo <- "with"
+    } else {
+      set$gc <- FALSE # run once more without gc to get correct timing
+      test.run.timed <- treeprof_eval_each(set, times=1L)
+      wwo <- "without"
+    }
+    clean_message(paste0("auto gc: running ", wwo, " gc() first"), set$verbose)
+  }
   run.counter <- 1L
   clean_message(
-    paste0("First run in ", format(test.run.timed), " seconds"), verbose
+    paste0("First run in ", format(test.run.timed), " seconds"), set$verbose
   )
-  if(identical(gc, "auto")) gc <- if(test.run.timed >= 0.25) TRUE else FALSE
 
   # just repeat requested number of times
 
-  if(!is.null(times)) {
-    test.run.timed <- test.run.timed + treeprof_eval_each(
-      expr.quoted, frame, times - 1L, file, interval, gc=gc,
-      gc.torture=gc.torture
-    )
-    run.counter <- run.counter + times - 1L
+  if(!is.null(set$times)) {
+    test.run.timed <- test.run.timed + treeprof_eval_each(set, set$times - 1L)
+    run.counter <- run.counter + set$times - 1L
   } else {
     # attempt to run as many times as reqd to get target time.  If evaluation is
     # under precision (roughly) for system.time, keep evaling until we get
     # enough time
 
-    run.multiplier <- 1
+    run.multiplier <- 1L
 
     while(test.run.timed < 0.02) {
-      clean_message("Fast Loop, still estimating required repetitions", verbose)
-      run.multiplier <- run.multiplier * 5
-      test.run.timed <- test.run.timed + treeprof_eval_each(
-        expr.quoted, frame, times=run.multiplier, file, interval, gc=gc,
-        gc.torture=gc.torture
+      clean_message(
+        "Fast Loop, still estimating required repetitions", set$verbose
       )
+      run.multiplier <- run.multiplier * 5L
+      test.run.timed <- test.run.timed + treeprof_eval_each(set, run.multiplier)
       run.counter <- run.counter + run.multiplier
     }
-    times <- ceiling(
-      (target.time - test.run.timed) / test.run.timed * run.counter
+    times <- as.integer(
+      ceiling((set$target.time - test.run.timed) / test.run.timed * run.counter)
     )
     # Keep repeating if needed
 
-    if(times > 0) {
-      clean_message(paste0("Looping to ", target.time, " seconds"), verbose)
-      test.run.timed <- test.run.timed + treeprof_eval_each(
-        expr.quoted, frame, times=times, file, interval, gc=gc,
-        gc.torture=gc.torture
+    if(times > 0L) {
+      clean_message(
+        paste0("Looping to ", set$target.time, " seconds"), set$verbose
       )
+      test.run.timed <- test.run.timed + treeprof_eval_each(set, times)
       run.counter <- run.counter + times
     }
   }
   levels <- length(sys.calls())
   list(
-    file=file, meta=list(run.counter=run.counter, time.total=test.run.timed,
+    file=rprof.set$file, meta=list(run.counter=run.counter, time.total=test.run.timed,
     levels=levels)
   )
 }
@@ -249,23 +259,21 @@ run_rprof <- function(
 #'
 #' @keywords internal
 
-treeprof_eval_each <- function(
-  exp, frame, times, prof.file, interval, gc, gc.torture
-) {
+treeprof_eval_each <- function(set, times) {
   index <- seq(times)
-  if(gc.torture) {
-    gctorture(gc.torture)
+  if(set$gc.torture) {
+    gctorture(set$gc.torture)
     on.exit(gc.torture=FALSE)
   }
   time <- system.time(
     {
-      Rprof(prof.file, interval=interval, append=TRUE)
-      for(i in index) treeprof_eval(exp, frame, gc)
+      Rprof(set$file, interval=set$interval, append=TRUE)
+      for(i in index) treeprof_eval(set$expr.quoted, set$frame, set$gc)
       Rprof(NULL)
     },
     gcFirst=FALSE
   )[["elapsed"]]
-  if(gc.torture) gctorture(FALSE)
+  if(set$gc.torture) gctorture(FALSE)
   time
 }
 treeprof_eval <- function(exp, frame, gc=TRUE) {
@@ -287,21 +295,36 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   con <- file(lines$file)
   lines.text <- readLines(con)
   close(con)
-  lines.text <- lines.text[!grepl("^sample\\.interval=[0-9]+$", lines.text)]  # expensive check
+  lines.text <- lines.text[!grepl("^sample\\.interval=[0-9]+$", lines.text)]
   if(length(lines.text) < 2L) {
     stop("Log file had fewer than 2 lines")
   }
-  if(!all(grepl('^("[^"]*" )+$', lines.text))) {
+  pat.rem <- paste0(
+    '("treeprof_eval" )?"system.time" "treeprof_eval_each" ("[^"]*" ){',
+    lines$meta$levels, ',}?$'
+  )
+  pat.valid <- paste0('^("[^"]*" )+', pat.rem)
+  invalid <- !grepl(pat.valid, lines.text, perl=TRUE)
+  if(any(invalid))
     stop(
       "Log file in unexpected format; make sure you are not using function ",
-      " names that contain double-quote characters."
-  ) }
+      " names that contain double-quote characters; first mismatch at line ",
+      which(invalid)[[1L]], "."
+    )
   # Get rid of baseline calls that are unrelated to what we're profiling
 
-  lines.trim <- gsub(
-    paste0('("[^"]*" ){0,', lines$meta$levels + 8L, '}$'),
-    "", lines.text
-  )
+  lines.trim <- gsub(pat.rem, "", lines.text, perl=TRUE)
+
+  # Determine which lines are overhead; count and remove
+
+  lines.gc <- grep('("[^"]*" )*"gc" $', lines.trim)
+  lines.ok <- grep('("[^"]*" )+"eval" "eval" $', lines.trim)
+  invalid <- !grepl('^(("eval" ){1,2}|)$', lines.trim[-c(lines.gc, lines.ok)])
+  if(any(invalid))
+    stop("Internally inconsistent profile log file; contact maintainer.")
+
+  lines.final <- lines.trim[lines.ok]
+
   # Collapse recursion
 
   if(collapse.recursion) {
@@ -309,7 +332,7 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
     pat <- "(((?:\"[^\"]+\" )+?)\\2+)"
     lines.trim <- gsub(pat, "\\2", lines.trim, perl=TRUE)
   }
-  tokens <- regmatches(lines.trim[-1L], gregexpr('"([^"]*)"', lines.trim[-1L]))
+  tokens <- regmatches(lines.final, gregexpr('"([^"]*)"', lines.final))
   log.mx <- matrix(
     NA_character_, nrow=length(tokens), ncol=max(unlist(lapply(tokens, length)))
   )
@@ -320,7 +343,17 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   # Remove quotes, should only be at beginning and end of each element, pluss
   # add parens
 
-  cbind(gsub("\"", "", log.mx, fixed=TRUE), NA_character_)
+  res <- cbind(gsub("\"", "", log.mx, fixed=TRUE), NA_character_)
+  if(ncol(res) < 2L)
+    stop("Logic Error: insufficient stack depth; contact maintainer.")
+  res <- res[, -(1:2)]  # drop the eval eval cols
+
+  # set attributes
+
+  attr(res, "collapse.recursion") <- collapse.recursion
+  attr(res, "eval.time.fraction") <- length(lines.final) / length(lines.trim)
+
+  res
 }
 
 #' Generate The Final Treeprof Object
