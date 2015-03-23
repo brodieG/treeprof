@@ -24,8 +24,8 @@ unitizer_sect("Recreate treeprof from log", {
   invisible(  # cleanup / transform to matrix format
     prof.mx <- treeprof:::parse_lines(list(file=unzip.paths, meta=list(levels=2L)))
   )
-  x <- treeprof:::melt_prof(prof.mx)                           # convert to long format / data.table
-  attributes(x) <- attributes(treeprof.ref)                    # ad back attrs since they aren't created with the ad-hoc creation here
+  x <- treeprof:::melt_prof(prof.mx)             # convert to long format / data.table
+  attributes(x) <- attributes(treeprof.ref)      # ad back attrs since they aren't created with the ad-hoc creation here
   all.equal(treeprof.ref, x)
   x
 } )

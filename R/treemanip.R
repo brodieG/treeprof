@@ -224,7 +224,8 @@ passthru_fun <- function(enter, exit, dont.exit.if) {
 
 passthru_defined <- list(
   passthru_fun("try", "doTryCatch", ""),
-  passthru_fun("tryCatch", "doTryCatch", "tryCatchList")
+  passthru_fun("tryCatch", "doTryCatch", "tryCatchList"),
+  passthru_fun("withRestarts", "doWithOneRestart", "withRestartList")
 )
 
 #' Sort A Treeprof
