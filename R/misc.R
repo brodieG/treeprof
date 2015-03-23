@@ -28,7 +28,7 @@ as.data.table.treeprof_fun_table <- function(x, keep.rownames=FALSE) {
 #' @param verbose logical(1L)
 
 clean_message <- function(msg, verbose) {
-  if(verbose) message(msg)
+  if(verbose) cat(msg, "\n", sep="", file=stderr())
 }
 
 #' Copies Attributes Lost With `[`
