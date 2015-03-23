@@ -284,7 +284,7 @@ treeprof_eval_each <- function(set, times) {
 }
 treeprof_eval <- function(exp, frame, gc=TRUE) {
   if(gc) gc(FALSE)
-  eval(exp, frame)
+  eval(exp, frame, NULL)
 }
 
 #' Converts \code{`\link{Rprof}`} Output to Matrix
