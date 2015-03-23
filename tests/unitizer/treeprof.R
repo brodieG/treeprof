@@ -5,24 +5,27 @@ library(data.table)
 # here.  Because the code that generates the file is inherently
 # non-deterministic we do not run it here, instead we just recover the file
 
-# library(functools)
 # library(treeprof)
-# fun <- function(albatross, batman, courser) match_call()
-# b <- runif(1000)
-# my.file <- "matchcall.bench.out"
-# x <- treeprof(fun(alb=matrix(1:100, nrow=10), bat=5, cour=b), file=my.file, target.time=20)
-# zip("matchcall.bench.zip", "matchall.bench.out")
-# file.remove("matchcall.bench.out")
-# saveRDS(x, "matchcall.treeprof.RDS")
+# file <- "parsewithcom.out"
+# x <- treeprof(
+#   unitizer:::parse_with_comments("../alike/tests/unitizer/internal.R"),
+#   file=file, target.time=5, collapse.recursion=TRUE
+# )
+# zip("parsewithcom.zip", "parsewithcom.out")
+# file.remove("parsewithcom.out")
+# saveRDS(x, "parsewithcom.treeprof.RDS")
 
-zip.data <- system.file("extdata/matchcall.bench.zip", package="treeprof")
+zip.data <- system.file("extdata/parsewithcom.zip", package="treeprof")
 unzip.dir <- tempdir()
 unzip.paths <- unzip(zip.data, exdir=unzip.dir)
-treeprof.ref <- readRDS(system.file("extdata/matchcall.treeprof.RDS", package="treeprof"))
+treeprof.ref <- readRDS(system.file("extdata/parsewithcom.treeprof.RDS", package="treeprof"))
 
 unitizer_sect("Recreate treeprof from log", {
   invisible(  # cleanup / transform to matrix format
-    prof.mx <- treeprof:::parse_lines(list(file=unzip.paths, meta=list(levels=2L)))
+    prof.mx <- treeprof:::parse_lines(
+      list(file=unzip.paths, meta=list(levels=2L)),
+      collapse.recursion=T
+    )
   )
   x <- treeprof:::melt_prof(prof.mx)             # convert to long format / data.table
   attributes(x) <- attributes(treeprof.ref)      # ad back attrs since they aren't created with the ad-hoc creation here
@@ -33,7 +36,7 @@ unitizer_sect("Node management", {
   treeprof.ref.1 <- readRDS(system.file("extdata/type_alike.treeprof.RDS", package="treeprof"))
   treeprof.ref.2 <- readRDS(system.file("extdata/doubletry.treeprof.RDS", package="treeprof"))
 
-  treeprof:::get_child_nodes(treeprof.ref, 23L)
+  treeprof:::get_child_nodes(treeprof.ref, 7L)
   passthru <- treeprof:::passthru_fun("try", "doTryCatch", "")
   passthru
   treeprof:::collapse_passthru_fun(treeprof.ref, passthru)  # get rid of `try`
@@ -68,34 +71,12 @@ unitizer_sect("By Function Summary Table", {
   by_fun(treeprof:::normalize(treeprof.ref.2, "auto"))
 } )
 unitizer_sect("Verbosity", # Don't care so much about value since non-deterministic, want to check stderr()
-  compare=unitizerItemTestsFuns(value=function(x, y) TRUE, message=all.equal),
+  compare=unitizerItemTestsFuns(
+    value=function(x, y) TRUE,
+    message=function(x, y)
+      identical(as.logical(length(x)), as.logical(length(y)))
+  ),
   {
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1)
     treeprof(data.frame(a=1:1000, b=1:1000), target.time=1, verbose=FALSE)
-} )
-unitizer_sect("Recursive", {
-  rec.data <- readRDS(system.file("extdata/recursive.RDS", package="treeprof"))
-  tmp <- tempfile()
-  cat(rec.data[[1L]], sep="\n", file=tmp)
-  lines <- modifyList(rec.data[[2]], list(file=tmp));
-  res.norm <- treeprof:::melt_prof(treeprof:::parse_lines(lines))
-  res.crec <-  treeprof:::melt_prof(
-    treeprof:::parse_lines(lines, collapse.recursion=TRUE)
-  )
-  # no recursion collapse
-  (
-    setattr(
-      res.norm, "meta.data",
-      list(
-        iterations=rec.data[[2L]]$meta$run.counter,
-        time=rec.data[[2L]]$meta$time.total)
-  ) )
-  # with recursion collapse
-  (
-    setattr(
-      res.crec, "meta.data",
-      list(
-        iterations=rec.data[[2L]]$meta$run.counter,
-        time=rec.data[[2L]]$meta$time.total)
-  ) )
 } )

@@ -14,7 +14,8 @@
 #' @param x data.table
 #' @param i the node id
 #' @param depth how many levels below \code{`i`} to show
-#' @param disp.thresh nodes below which speed threshold to keep (5 mills default)
+#' @param disp.thresh nodes below which speed threshold to keep (5 mills
+#'   default; note: mill = 1/1000 of overall eval time, not millisecond)
 #' @return data.table pruned as described
 
 trim_branch <- function(x, i, depth=5L) {
