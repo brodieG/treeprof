@@ -314,8 +314,8 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   if(any(invalid)) {
     stop(
       "Log file in unexpected format; make sure you are not using function ",
-      " names that contain double-quote characters; first mismatch at:\n\n",
-      lines.text[[which(invalid)[[1L]]]]
+      " names that contain double-quote characters; first mismatch at line ",
+      which(invalid)[[1L]], ":\n\n", lines.text[[which(invalid)[[1L]]]]
     )
   }
   # Get rid of baseline calls that are unrelated to what we're profiling
@@ -332,8 +332,10 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   lines.ok <- grep('("[^"]*" )+"eval" "eval" $', lines.trim)
   invalid <- !grepl('^(("eval" ){1,2}|)$', lines.trim[-c(lines.gc, lines.ok)])
   if(any(invalid))
-    stop("Internally inconsistent profile log file; contact maintainer.")
-
+    stop(
+      "Internally inconsistent profile log file; first mismatch at:\n\n",
+      lines.trim[-c(lines.gc, lines.ok)][which(invalid)[[1L]]]
+    )
   lines.final <- sub('"eval" "eval" $', "", lines.trim[lines.ok])
 
   # Collapse recursion
