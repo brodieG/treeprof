@@ -133,6 +133,7 @@ treeprof_ <- function(
     temp.file <- tempfile()
     on.exit(if(file.exists(temp.file)) file.remove(temp.file))
   } else {
+    if(file.exists(file)) stop("Argument `file` must be non-existent file.")
     temp.file <- file
   }
   if(!length(gc) == 1L) {
@@ -155,6 +156,7 @@ treeprof_ <- function(
   )
   # Now process resulting Rprof output
 
+  Rprof(NULL)
   clean_message("Profiling", verbose)
   lines <- run_rprof(rprof.set)                      # run Rprof and return character vector
   clean_message("Parsing Rprof", verbose)
@@ -307,13 +309,13 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
     '("treeprof_eval" )?"system\\.time" "treeprof_eval_each" ("[^"]*" ){',
     lines$meta$levels, ',}?$'
   )
-  pat.valid <- paste0('^("[^"]*" )+', pat.rem)
+  pat.valid <- paste0('^("[^"]*" )*', pat.rem)
   invalid <- !grepl(pat.valid, lines.text, perl=TRUE)
   if(any(invalid)) {
     stop(
       "Log file in unexpected format; make sure you are not using function ",
-      " names that contain double-quote characters; first mismatch at line ",
-      which(invalid)[[1L]], "."
+      " names that contain double-quote characters; first mismatch at:\n\n",
+      lines.text[[which(invalid)[[1L]]]]
     )
   }
   # Get rid of baseline calls that are unrelated to what we're profiling
