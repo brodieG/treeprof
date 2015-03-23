@@ -304,7 +304,7 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
     stop("Log file had fewer than 2 lines")
   }
   pat.rem <- paste0(
-    '("treeprof_eval" )?"system.time" "treeprof_eval_each" ("[^"]*" ){',
+    '("treeprof_eval" )?"system\\.time" "treeprof_eval_each" ("[^"]*" ){',
     lines$meta$levels, ',}?$'
   )
   pat.valid <- paste0('^("[^"]*" )+', pat.rem)
@@ -318,6 +318,10 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   # Get rid of baseline calls that are unrelated to what we're profiling
 
   lines.trim <- gsub(pat.rem, "", lines.text, perl=TRUE)
+
+  # Remove S4 standardGeneric calls
+
+  lines.trim <- gsub('("[^"]*" )"standardGeneric" (\\1)', '\\1', lines.trim)
 
   # Determine which lines are overhead; count and remove
 
