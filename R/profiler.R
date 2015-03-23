@@ -309,12 +309,13 @@ parse_lines <- function(lines, collapse.recursion=FALSE) {
   )
   pat.valid <- paste0('^("[^"]*" )+', pat.rem)
   invalid <- !grepl(pat.valid, lines.text, perl=TRUE)
-  if(any(invalid))
+  if(any(invalid)) {
     stop(
       "Log file in unexpected format; make sure you are not using function ",
       " names that contain double-quote characters; first mismatch at line ",
       which(invalid)[[1L]], "."
     )
+  }
   # Get rid of baseline calls that are unrelated to what we're profiling
 
   lines.trim <- gsub(pat.rem, "", lines.text, perl=TRUE)
