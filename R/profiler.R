@@ -54,8 +54,20 @@
 #'
 #' You may run your code with \code{\link{gctorture}} on, but you will get more
 #' stable results by running the same function thousands of times than by using
-#' `gctorture` to slow it down by 10-1000x and just running it a couple of
-#' times.
+#' \code{\link{gctorture}} to slow it down by 10-1000x and just running it a
+#' couple of times.
+#'
+#' @section Stack Modification:
+#'
+#' This section is under construction.
+#'
+#' \code{treeprof} performs several cleanup operations on stacks to improve
+#' legibility.
+#' \itemize{
+#'   \item collapse recursion, but beware of S4 dispatch getting collapsed
+#'   \item passthru funs
+#'   \item ?
+#' }
 #'
 #' @export
 #' @import data.table
