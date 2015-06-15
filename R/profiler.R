@@ -234,7 +234,8 @@ run_rprof <- function(rprof.set) {
   # just repeat requested number of times
 
   if(!is.null(set$times)) {
-    test.run.timed <- test.run.timed + treeprof_eval_each(set, set$times - 1L)
+    if(set$times > 1L)
+      test.run.timed <- test.run.timed + treeprof_eval_each(set, set$times - 1L)
     run.counter <- run.counter + set$times - 1L
   } else {
     # attempt to run as many times as reqd to get target time.  If evaluation is
