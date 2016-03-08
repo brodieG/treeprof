@@ -180,7 +180,8 @@ treeprof_ <- function(
   setattr(res, "meta.data",
     list(
       iterations=lines$meta$run.counter,
-      time=lines$meta$time.total * attr(prof.mx, "eval.time.fraction")
+      time=lines$meta$time.total * attr(prof.mx, "eval.time.fraction"),
+      interval=interval
     )
   )
   clean_message("Done", verbose)
