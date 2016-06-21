@@ -3,7 +3,7 @@ Title: Visualize Rprof Results as a Tree
 Description: Evaluates expressions under `Rprof`, repeating them to achieve a
     meaningful evaluation time if necessary, and displays the results as
     a tree, either in ASCII text or as an interactive Shiny application.
-Version: 0.2.2
+Version: 0.2.3
 Author: Brodie Gaslam
 Maintainer: Brodie Gaslam <broide.gaslam@yahoo.com>
 Depends:
