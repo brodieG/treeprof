@@ -45,8 +45,8 @@ by_fun <- function(x) {
       instances=.N,
       instances.dup=sum(duplicated)
   ) ][order(-total)]
-  class(x.cp.time) <- c("treeprof_fun_table", class(x.cp.time))
-  attr(x.cp.time, "time.unit") <- attr(x, "time.unit")
+  copy_attrs(x.cp.time, x.cp)
+  setattr(x.cp.time, "class", c("treeprof_fun_table", "data.table", "data.frame"))
   x.cp.time
 }
 #' Compute High Level Summary of \code{`treeprof`}
@@ -63,6 +63,7 @@ summarize <- function(x) {
       Ticks=ticks <- x[, sum(n.self)],
       Iterations=attr(x, "meta.data")$iterations,
       `Time Per`=time_format(time_scale(time_per(x))),
-      `Time Total`=time_format(time_scale(attr(x, "meta.data")$time))
+      `Time Total`=time_format(time_scale(attr(x, "meta.data")$time)),
+      `Time Ticks`=ticks * attr(x, "meta.data")$interval
   ) )
 }

@@ -14,7 +14,8 @@
 #' @param x data.table
 #' @param i the node id
 #' @param depth how many levels below \code{`i`} to show
-#' @param disp.thresh nodes below which speed threshold to keep (5 mills default)
+#' @param disp.thresh nodes below which speed threshold to keep (5 mills
+#'   default; note: mill = 1/1000 of overall eval time, not millisecond)
 #' @return data.table pruned as described
 
 trim_branch <- function(x, i, depth=5L) {
@@ -34,7 +35,6 @@ trim_branch <- function(x, i, depth=5L) {
       cumsum(id > i & level <= lvl.curr) == 0
     )
   ]
-  attributes(y) <- attributes(x)
   y
 }
 trim_branch_fast <- function(x, i, disp.thresh) {
@@ -46,7 +46,7 @@ trim_branch_fast <- function(x, i, disp.thresh) {
     i
   }
   x.new <- x[ n >= threshold | id %in% nodes.keep ]
-  attributes(x.new) <- modifyList(attributes(x.new), attributes(x))
+  copy_attrs(x.new, x)
   x.new
 }
 #' Get \code{`ids`} of Descendant Nodes
@@ -67,14 +67,19 @@ get_descendant_nodes <- function(x, id.par) {
   if(!is.integer(id.par) || length(id.par) != 1L) stop("Argument `id` must be a 1 length integer")
   if(! id.par %in% x$id) stop("Id supplied (", id.par, ") not in treeprof")
   lvl <- x[id.par == id, level]
-  x[id >= id.par & (cumsum(level <= lvl & id > id.par) == 0), list(id)]
+  as.dt(x[id >= id.par & (cumsum(level <= lvl & id > id.par) == 0), list(id)])
 }
 get_child_nodes <- function(x, id.par) {
   if(!inherits(x, "treeprof")) stop("Argument `x` must be a treeprof object")
   if(!is.integer(id.par) || length(id.par) != 1L) stop("Argument `id` must be a 1 length integer")
   if(! id.par %in% x$id) stop("Id supplied (", id.par, ") not in treeprof")
   lvl <- x[id.par == id, level]
-  x[(id >= id.par & (cumsum(level < lvl & id > id.par) == 0) & level == lvl + 1L) | id == id.par, list(id)]
+  as.dt(
+    x[
+      (id >= id.par & (cumsum(level < lvl & id > id.par) == 0) & level == lvl + 1L) |
+      id == id.par,
+      list(id)
+  ] )
 }
 #' Get \code{`ids`} of Parent Node For Each Node
 #'
@@ -127,7 +132,6 @@ collapse_passthru_fun <- function(x, passthru) {
   if(!inherits(passthru, "passthru_fun")) stop("Argument `passthru` must be a \"passthru_fun\" object.")
 
   x.cp <- copy(x)
-  attributes(x.cp) <- attributes(x)
 
   matches <- x.cp[, id[which(fun.name == passthru$enter)]]
   for(i in matches) {
@@ -162,11 +166,11 @@ collapse_passthru_fun <- function(x, passthru) {
     new.children[level > en.lvl, level:=level - ex.lvl + en.lvl]
     setcolorder(new.children, names(x.cp))
 
-    x.cp <- rbindlist(list(x.cp[!children], new.children))
-    setkey(x.cp, id)
-    attributes(x.cp) <- attributes(x)
+    x.cp.new <- rbindlist(list(x.cp[!children], new.children))
+    copy_attrs(x.cp.new, x.cp)
+    setkey(x.cp.new, id)
+    x.cp <- x.cp.new
   }
-  attributes(x.cp) <- attributes(x)
   x.cp
 }
 #' Applies All Defined Passthrus
@@ -184,7 +188,6 @@ collapse_passthru_funs <- function(x, passthrus=passthru_defined) {
     !all(vapply(passthrus, inherits, logical(1L), "passthru_fun"))
   ) stop("Argument `passthrus` must be a list of \"passthru_fun\" objects")
   x.new <- copy(x)
-  attributes(x.new) <- attributes(x)
   for(i in passthru_defined) x.new <- collapse_passthru_fun(x.new, i)
   x.new
 }
@@ -222,7 +225,8 @@ passthru_fun <- function(enter, exit, dont.exit.if) {
 
 passthru_defined <- list(
   passthru_fun("try", "doTryCatch", ""),
-  passthru_fun("tryCatch", "doTryCatch", "tryCatchList")
+  passthru_fun("tryCatch", "doTryCatch", "tryCatchList"),
+  passthru_fun("withRestarts", "doWithOneRestart", "withRestartList")
 )
 
 #' Sort A Treeprof
@@ -274,8 +278,7 @@ sort.treeprof <- function(x, decreasing=FALSE, ...) {
   x.cp <- x[do.call(order, c(res.lst, decreasing=decreasing))]
   x.cp[, id:=1:nrow(x.cp)]
   setkey(x.cp, id)
-  setattr(x.cp, "class", c("treeprof", class(x.cp)))
-  setattr(x.cp, "meta.data", attr(x, "meta.data"))
+  copy_attrs(x.cp, x)
   x.cp
 }
 #' Converts to desired time units
@@ -321,4 +324,5 @@ normalize <- function(x, disp.unit) {
   }
   attr(x.cp, "time.unit") <- disp.unit
   setattr(x.cp, "class", c("treeprof_norm", class(x.cp)))
+  x.cp
 }

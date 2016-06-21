@@ -73,6 +73,8 @@ time_scale <- function(x, scale="auto", decimals.max=2L) {
 
 time_per <- function(x) {
   if(!inherits(x, "treeprof")) stop("Argument `x` must be a \"treeprof\" object.")
-  iters <- attr(x, "meta.data")$iterations
+  if(is.null(meta <- attr(x, "meta.data")))
+    stop("Argument `x` must have a meta data attribute.")
+  iters <- meta$iterations
   attr(x, "meta.data")$time / iters
 }
