@@ -128,26 +128,29 @@ get_par_nodes <- function(x) {
 #' @return a modified treeprof object
 
 collapse_passthru_fun <- function(x, passthru) {
-  if(!inherits(x, "treeprof")) stop("Argument `x` must be a \"treeprof\" object.")
-  if(!inherits(passthru, "passthru_fun")) stop("Argument `passthru` must be a \"passthru_fun\" object.")
+  if(!inherits(x, "treeprof"))
+    stop("Argument `x` must be a \"treeprof\" object.")
+  if(!inherits(passthru, "passthru_fun"))
+    stop("Argument `passthru` must be a \"passthru_fun\" object.")
 
   x.cp <- copy(x)
 
   matches <- x.cp[, id[which(fun.name == passthru$enter)]]
   for(i in matches) {
-    # For all the ex.funs, find the first one that isn't followed by a disallowed
-    # function
+    # For all the ex.funs, find the first one that isn't followed by a
+    # disallowed function
 
     children <- get_descendant_nodes(x.cp, i)
     ex.fun <- head(
       x.cp[children][,
         id[
           fun.name == passthru$exit &
-          c(tail(fun.name, -1L), NA) != passthru$dont.exit.if
+          c(tail(fun.name, -1L) != passthru$dont.exit.if, TRUE)
       ] ],
       1L
     )
     if(!length(ex.fun)) next
+
     en.lvl <- x.cp[id == i, level]
     ex.lvl <- x.cp[id == ex.fun, level]
 
@@ -158,9 +161,9 @@ collapse_passthru_fun <- function(x, passthru) {
 
     # Remove all items between entry and exit levels; we are using levels
     # because presumably any functions called between these levels are generared
-    # by the function we are trying to ablate.  Note that this creates a seemingly
-    # odd pattern where there can be function calls removed both before and
-    # after the function calls that are kept
+    # by the function we are trying to ablate.  Note that this creates a
+    # seemingly odd pattern where there can be function calls removed both
+    # before and after the function calls that are kept
 
     new.children <- x.cp[children][level <= en.lvl | level > ex.lvl]
     new.children[level > en.lvl, level:=level - ex.lvl + en.lvl]
