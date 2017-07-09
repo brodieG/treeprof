@@ -63,6 +63,7 @@ summarize <- function(x) {
       Ticks=ticks <- x[, sum(n.self)],
       Iterations=attr(x, "meta.data")$iterations,
       `Time Per`=time_format(time_scale(time_per(x))),
-      `Time Total`=time_format(time_scale(attr(x, "meta.data")$time))
+      `Time Total`=time_format(time_scale(attr(x, "meta.data")$time)),
+      `Time Ticks`=ticks * attr(x, "meta.data")$interval
   ) )
 }

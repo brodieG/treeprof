@@ -1,5 +1,7 @@
 # Treeprof - Pre-release
 
+*NOTE*: This is an in-development package.  It should work in most cases, but hasn't been extensively tested and likely contains bugs.  If enough interest develops for this package we will work to produce a stable release.
+
 ## Overview
 
 Yet another R benchmarking package.  Here is why you might be interested in it:
@@ -48,7 +50,7 @@ Can't get much simpler:
 
 This will output the tree to screen.
 
-### Shinfy!
+### Shinify!
 
 But the main use case for `treeprof` is through the Shiny interactive interface.
 This is also very simple:
