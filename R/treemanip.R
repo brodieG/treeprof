@@ -143,7 +143,7 @@ collapse_passthru_fun <- function(x, passthru) {
       x.cp[children][,
         id[
           fun.name == passthru$exit &
-          c(tail(fun.name, -1L), NA) != passthru$dont.exit.if
+          c(tail(fun.name, -1L), "") != passthru$dont.exit.if
       ] ],
       1L
     )
