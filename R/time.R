@@ -26,7 +26,7 @@ time_format <- function(x, signif=4L, inc.units=TRUE, trim=TRUE) {
   decimals <- max(0, signif - ceiling(log10(max(x))))
   paste0(
     format(
-      round(x, decimals), nsmall = decimals, digits=0,
+      round(x, decimals), nsmall = decimals, digits=1,
       trim=trim, scientific=FALSE
     ),
     if(inc.units) paste0(" ", attr(x, "time.unit"))
